@@ -13,7 +13,6 @@ Created on Sun Dec 11 10:30:27 2022
 # each of tha gns epochs
 import sys
 sys.path.append("/Users/amartinez/Desktop/pythons_imports/")
-
 import numpy as np
 from astropy import units as u
 from astropy.time import Time
@@ -27,13 +26,11 @@ import os
 # import cluster_finder
 from filters import filter_gaia_data
 import Polywarp as pw
-from alignator import alignator
-from alignator_relative import alg_rel
 import skimage as ski
 from astropy.table import Table
 from compare_lists import compare_lists
 from astropy.stats import sigma_clip
-from alignator_looping import alg_loop
+from alignator_gaia import alig_gaia
 from astropy.table import unique
 import gns_cluster_finder
 from filters import filter_gns_data
@@ -44,6 +41,10 @@ from astropy.coordinates import search_around_sky
 from collections import Counter
 from sys import exit as stop
 from astropy.coordinates import Longitude
+from astropy.io import fits
+from astropy.wcs import WCS
+from pyplots import plot_two_hists_sigma
+from pyplots import plot_two_pm_hists
 # %%plotting parametres
 from matplotlib import rc
 from matplotlib import rcParams
@@ -71,151 +72,53 @@ plt.rcParams.update({'figure.max_open_warning': 0})# a warniing for matplot lib 
 # Enable automatic plotting mode
 # IPython.get_ipython().run_line_magic('matplotlib', 'auto')
 IPython.get_ipython().run_line_magic('matplotlib', 'inline')
-# %%
-# field_one = 10
-# chip_one = 0
-# field_two = 4
-# chip_two = 0
-
-field_one = 'B6'
-chip_one = 0
-field_two = 20
-chip_two = 0
-
-# # field_one = 'D12'
-# field_one = 'D13'
-# chip_one = 0
-# field_two = 1
-# chip_two = 0
-
-# field_one = 16
-# chip_one = 0
-# field_two = 7
-# chip_two = 0
 
 
-# field_one = 'D19'
-# chip_one = 0
-# field_two = 16
-# chip_two = 0
+folder = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/'
+zone = 'G032.03+00.05'
+band = '160w'
+# epoch = 2
 
-# field_one = 19
-# chip_one = 0
-# field_two = 9
-# chip_two = 0
-
-# field_one = 24
-# chip_one = 0
-# field_two = 9
-# chip_two = 0
-
-# field_one = 1
-# chip_one = 0
-# field_two = 9
-# chip_two = 0
-# %%
-
-
-
-if field_one == 7 or field_one == 12 or field_one == 10 or field_one == 16 or field_one == 2 or field_one == 24 :
-    t1_gns = Time(['2015-06-07T00:00:00'],scale='utc')
-
-elif field_one == 19:
-    t1_gns = Time(['2015-06-26T00:00:00'],scale='utc')
-    
-elif field_one == 'B6' or field_one == 1 :
-    t1_gns = Time(['2016-06-13T00:00:00'],scale='utc')
-elif field_one ==  'B1':
-    t1_gns = Time(['2016-05-20T00:00:00'],scale='utc')
-elif field_one ==  'D12':
-    t1_gns = Time(['2017-06-03T00:00:00'],scale='utc')
-elif field_one ==  'D13':
-    t1_gns = Time(['2017-06-24T00:00:00'],scale='utc')
-elif field_one ==  'D19':
-    t1_gns = Time(['2018-05-21T00:00:00'],scale='utc')
-else:
-    print(f'NO time detected for this field_one = {field_one}')
-    sys.exit()
-
-if field_two == 7 or field_two == 5:
-    t2_gns = Time(['2022-05-27T00:00:00'],scale='utc')
-elif field_two == 4:
-    t2_gns = Time(['2022-04-05T00:00:00'],scale='utc')
-elif field_two == 20:
-    t2_gns = Time(['2022-07-25T00:00:00'],scale='utc')
-elif field_two == 1 or field_two == 9 :
-    t2_gns = Time(['2021-09-17T00:00:00'],scale='utc')
-elif field_two == 16:
-    t2_gns = Time(['2022-08-14T00:00:00'],scale='utc')
-else:
-    print(f'NO time detected for this field_two = {field_two}')
-    sys.exit()
-
-dt_gns = t2_gns - t1_gns
-
-# %%
-# ===============================Constants=====================================
-
-# =============================================================================
-# Quality cuts
-# =============================================================================
-max_sig = 0.05
+pruebas = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/pruebas/'
 
 
 # =============================================================================
-# Alignment params
+# Gaia parametres
 # =============================================================================
-rebfacI = 2
-rebfacII = 2
-# gaia_clipping = 'one_one'# Clipp the Gaia outlayer one by one
-gaia_clipping = 'all'# Clipp the Gaia outlayer all at once
+radius = 200*u.arcsec
+max_sep = 50*u.mas
+mag_gaia = [12,18]
+e_pm_gaia = 0.5
+e_pos_gaia = 1
+# =============================================================================
+# HST observation
+# =============================================================================
 
-# %%
+pixSca = 0.12825 #arcsec/pixel
+# pixSca = 0.00001 #arcsec/pixel
+
+# =============================================================================
+# Aligment paremeters
+# =============================================================================
+# pre_transf = 'similarity'
+transf = 'polynomial'
+# transf = 'affine'
+# transf = 'similarity'
+order_trans = 1
 align_loop = 'yes'
 # align_loop = 'no'
-max_loop = 5
 align = 'Polywarp'
-# align = '2DPoly'
-# f_mode = 'WnC'
-sep_both = [50,50]
-max_sep_ls = [sep_both[0]*u.mas,sep_both[1]*u.mas]#!!!
 max_deg = 3# If this is <2 it does not enter the alignment loop. 
-
-trans_ls = ['polynomial','affine','similarity','Weight']
-transf = trans_ls[0]
-# pre_transf = trans_ls[2]# Pre transformation
-order_trans = 1
-clip_in_alig = 'yes' # Clipps the 3sigmas in position during the alignment
-# clip_in_alig = None
-
-m_lim = [12 ,18]
+max_loop = 10
 
 # =============================================================================
-# Proper motions param
-# ===========================================================================
-max_dis_pm = 0.150#in arcsec
-sig_H = 3# discrd pm for stars with delta H over sig_H
-e_pm_gns = 1# im mas/yr
-
+# Dictionaries
 # =============================================================================
-# Gaia Settings 
-# ============================================================================+
-e_pm_gaia = 0.5#!!!
-mag_min_gaia = 18#!!!
-e_pos_gaia = 0.5
-# =============================================================================
-# Clustering 
-# =============================================================================
-# look_for_cluster = 'yes'
-look_for_cluster = 'no'
+cat_dic = {}
+obst_dic = {}
+gaia_dic = {}
+center = SkyCoord(ra = 282.41000248, dec = -0.78212655, unit = 'degree', frame = 'icrs')
 
-# =============================================================================
-
-GNS_1='/Users/amartinez/Desktop/PhD/HAWK/GNS_1/lists/%s/chip%s/'%(field_one, chip_one)
-GNS_2='/Users/amartinez/Desktop/PhD/HAWK/GNS_2/lists/%s/chip%s/'%(field_two, chip_two)
-
-pruebas1 = '/Users/amartinez/Desktop/PhD/HAWK/GNS_1absolute_SUPER/pruebas/'
-pruebas2 = '/Users/amartinez/Desktop/PhD/HAWK/GNS_2absolute_SUPER/pruebas/'
 
 bad = []
 lopping = 1
@@ -223,97 +126,71 @@ lopping = 1
 wloop_counter = 0
 while lopping > 0:
     
-    # gns1 = Table.read(f'/Users/amartinez/Desktop/Projects/GNS_gd/pruebas/F{field_one}/{field_one}_H_chips_opti.ecsv',  format = 'ascii.ecsv')
-    # gns2 = Table.read(f'/Users/amartinez/Desktop/Projects/GNS_gd/pruebas/F{field_two}/{field_two}_H_chips_opti.ecsv', format = 'ascii.ecsv')
-    
-    
-    
-    # gns1 = Table.read(f'/Users/amartinez/Desktop/Projects/GNS_gd/superlists/GNS1/F{field_one}/{field_one}_H_chips_opti.ecsv',  format = 'ascii.ecsv')
-    gns2 = Table.read(f'/Users/amartinez/Desktop/Projects/GNS_gd/superlists/GNS2/F{field_two}/{field_two}_H_chips_opti.ecsv', format = 'ascii.ecsv')
-    
-    # gns1 = Table.read(f'/Users/amartinez/Desktop/Projects/GNS_gd/superlists/GNS1/F{field_one}/{field_one}_H_chips_opti_rebfac{rebfacI}.ecsv',  format = 'ascii.ecsv')
-    # gns2 = Table.read(f'/Users/amartinez/Desktop/Projects/GNS_gd/superlists/GNS2/F{field_two}/{field_two}_H_chips_opti_rebfac{rebfacII}.ecsv', format = 'ascii.ecsv')
-    
-    # gns1 = Table.read(f'/Users/amartinez/Desktop/Projects/GNS_gd/superlists/GNS1/F{field_one}/{field_one}_H_chips_opti_rebfac{rebfacI}_VVV.ecsv',  format = 'ascii.ecsv')
-    # gns2 = Table.read(f'/Users/amartinez/Desktop/Projects/GNS_gd/superlists/GNS2/F{field_two}/{field_two}_H_chips_opti_rebfac{rebfacII}_VVV.ecsv', format = 'ascii.ecsv')
-    
-    # gns1 = Table.read(f'/Users/amartinez/Desktop/Projects/GNS_gd/superlists/GNS1/F{field_one}/{field_one}_H_chips_opti_noDup_rebfac{rebfacI}.ecsv',  format = 'ascii.ecsv')
-    # gns2 = Table.read(f'/Users/amartinez/Desktop/Projects/GNS_gd/superlists/GNS2/F{field_two}/{field_two}_H_chips_opti_noDup_rebfac{rebfacII}.ecsv', format = 'ascii.ecsv')
- 
-    gns1 = Table.read('/Users/amartinez/Desktop/Projects/GNS_gd/pruebas/FB1/B1_and_B6_comb.ecsv',  format = 'ascii.ecsv')
 
+    for epoch in range(1,3):
+        cat = Table.read(folder + f'{zone}/gaia_alignment/Epoch{epoch}/starfinder/{zone}_EP{epoch}_f{band}_drz_sci_stars{band}.txt', format = 'ascii')
+        # ima = fits.open(f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/{zone}/gaia_alignment/Epoch{epoch}/{zone}_EP{epoch}_{band}_drz_sci.fits')
+        ima = fits.open(folder  + f'{zone}/gaia_alignment/Epoch{epoch}/G032.03+00.05_EP{epoch}_f{band}_drz_sci.fits')
+        wcs = WCS(ima[0].header)
+        
+        cat_rd = wcs.pixel_to_world(cat['x'], cat['y'])
+        
+        # center = SkyCoord(ra = np.mean(cat_rd.ra.value), dec = np.mean(cat_rd.dec.value),
+        #                   unit = 'degree', frame = 'icrs')
+        
+        cat['ra'] = cat_rd.ra
+        cat['dec'] = cat_rd.dec
+        
+        cat['x'] = cat['x']*pixSca # These are arcsec
+        cat['y'] = cat['y']*pixSca
+        
+        mjd = ima[0].header['EXPSTART']   # e.g., 57610.4918468
+        obst = Time(mjd, format='mjd', scale='utc')
+        # obst_dic[f't{epoch}'] = obst.decimalyear
+        obst_dic[f't{epoch}'] = obst
     
-    gns1['l'] = Longitude(gns1['l']).wrap_at('180d')
-    gns2['l'] = Longitude(gns2['l']).wrap_at('180d')
+        cat_dic[f'cat{epoch}'] = cat
     
+    # m_mask1 = (gns1['H'] > m_lim[0]) & (gns1['H'] < m_lim[1])
+    # gns1 = gns1[m_mask1]
     
-    buenos1 = (gns1['l']>min(gns2['l'])) & (gns1['l']<max(gns2['l'])) & (gns1['b']>min(gns2['b'])) & (gns1['b']<max(gns2['b']))
-    gns1 = gns1[buenos1]
+    # unc_cut1 = (gns1['sl']< max_sig) & (gns1['sb'] < max_sig)
+    # gns1 = gns1[unc_cut1]
     
-    buenos2 = (gns2['l']>min(gns1['l'])) & (gns2['l']<max(gns1['l'])) & (gns2['b']>min(gns1['b'])) & (gns2['b']<max(gns1['b']))
-    gns2 = gns2[buenos2]
-    
-    
-    
-    m_mask1 = (gns1['H'] > m_lim[0]) & (gns1['H'] < m_lim[1])
-    gns1 = gns1[m_mask1]
-    
-    unc_cut1 = (gns1['sl']< max_sig) & (gns1['sb'] < max_sig)
-    gns1 = gns1[unc_cut1]
-    
-    m_mask2 = (gns2['H'] > m_lim[0]) & (gns2['H'] < m_lim[1])
-    gns2 = gns2[m_mask2]
-    
-    
-    unc_cut2 = (gns2['sl']<max_sig) & (gns2['sb']<max_sig)
-    gns2 = gns2[unc_cut2]
-    
-    
-    
-    center = SkyCoord(l = np.mean(gns1['l']), b = np.mean(gns1['b']), unit = 'degree', frame = 'galactic')
-    # center_1 = SkyCoord(l = np.mean(gns1['l']), b = np.mean(gns1['b']), unit = 'degree', frame = 'galactic')
-    # center_2 = SkyCoord(l = np.mean(gns2['l']), b = np.mean(gns2['b']), unit = 'degree', frame = 'galactic')
-    
-    gns1_lb = SkyCoord(l = gns1['l'], b = gns1['b'], unit ='deg', frame = 'galactic')
-    gns2_lb = SkyCoord(l = gns2['l'], b = gns2['b'], unit ='deg', frame = 'galactic')
-    
-    xg_1, yg_1 = center.spherical_offsets_to(gns1_lb)
-    xg_2, yg_2 = center.spherical_offsets_to(gns2_lb)
+    # m_mask2 = (gns2['H'] > m_lim[0]) & (gns2['H'] < m_lim[1])
+    # gns2 = gns2[m_mask2]
     
     
-    gns1['xp'] = xg_1.to(u.arcsec)
-    gns1['yp'] = yg_1.to(u.arcsec)
-    gns2['xp'] = xg_2.to(u.arcsec)
-    gns2['yp'] = yg_2.to(u.arcsec)
+    # unc_cut2 = (gns2['sl']<max_sig) & (gns2['sb']<max_sig)
+    # gns2 = gns2[unc_cut2]
     
-    # radius = abs(np.min(gns1['l'])-np.max(gns1['l']))*1*u.degree
-    radius = 300*u.arcsec
-    # %
+    # =============================================================================
+    # GAIA
+    # =============================================================================
     
-    gaia = Table.read('/Users/amartinez/Desktop/PhD/Catalogs/Gaia/gaia_over_GNS.txt', format = 'ascii.ecsv')
-# =============================================================================
-#     try:
-#         
-#         gaia = Table.read(pruebas1  + 'Noooo_gaia_f1%s_f2%s_r%.0f.ecsv'%(field_one,field_two,radius.to(u.arcsec).value))
-#         # gaia = Table.read(pruebas1  + 'gaia_f1%s_f2%s_r400.ecsv'%(field_one,field_two))
-#         
-#         # gaia = Table.read('/Users/amartinez/Desktop/PhD/HAWK/GNS_1relative_SUPER/pruebas/gaia_f1D19_f216_r269.ecsv')
-#         print('Gaia from table')
-#     except:
-#         print('Gaia from web')
-#         # center = SkyCoord(l = np.mean(gns1['l']), b = np.mean(gns1['b']), unit = 'degree', frame = 'galactic').icrs
-#     
-#         Gaia.MAIN_GAIA_TABLE = "gaiadr3.gaia_source" # Select early Data Release 3
-#         Gaia.ROW_LIMIT = -1  # it not especifty, Default rows are limited to 50. 
-#         # j = Gaia.cone_search_async(center, radius = abs(radius))
-#         j = Gaia.cone_search_async(center, radius = radius)
-#         gaia = j.get_results()
-#         os.makedirs(pruebas1, exist_ok=True)
-#         gaia.write(pruebas1  + 'gaia_f1%s_f2%s_r%.0f.ecsv'%(field_one,field_two,radius.to(u.arcsec).value), overwrite = True)
-# =============================================================================
     
+    try:
+        
+        gaia = Table.read(pruebas  +f'gaia_{zone}_{radius.value: .0f}.ecsv', format = 'ascii.ecsv')
+        # gaia = Table.read(pruebas1  + 'gaia_f1%s_f2%s_r400.ecsv'%(field_one,field_two))
+        
+        # gaia = Table.read('/Users/amartinez/Desktop/PhD/HAWK/GNS_1relative_SUPER/pruebas/gaia_f1D19_f216_r269.ecsv')
+        print('Gaia from table')
+    except:
+        print('Gaia from web')
+        # center = SkyCoord(l = np.mean(gns1['l']), b = np.mean(gns1['b']), unit = 'degree', frame = 'galactic').icrs
+    
+        Gaia.MAIN_GAIA_TABLE = "gaiadr3.gaia_source" # Select early Data Release 3
+        Gaia.ROW_LIMIT = -1  # it not especifty, Default rows are limited to 50. 
+        # j = Gaia.cone_search_async(center, radius = abs(radius))
+        j = Gaia.cone_search_async(center, radius = radius)
+        gaia = j.get_results()
+        os.makedirs(pruebas, exist_ok=True)
+        gaia.write(pruebas  + f'gaia_{zone}_{radius.value: .0f}.ecsv', format = 'ascii.ecsv', overwrite = True)
+        gaia = Table.read(pruebas  +f'gaia_{zone}_{radius.value: .0f}.ecsv', format = 'ascii.ecsv')
+        
     gaia['id'] = np.arange(len(gaia))
-    gaia['l'] = Longitude(gaia['l']).wrap_at('180d')
+       
 
    
     
@@ -329,7 +206,8 @@ while lopping > 0:
     fig, ax2 = plt.subplots(1,1)
     ax2.scatter(gaia['phot_g_mean_mag'],gaia['pmra_error'], s= 2, label = 'Gaia $\delta \mu_{ra}$')
     ax2.scatter(gaia['phot_g_mean_mag'],gaia['pmdec_error'], s= 2, label = 'Gaia $\delta \mu_{dec}$')
-    ax2.axvline(mag_min_gaia, color = 'r', ls = 'dashed', label = 'pm cuts')
+    ax2.axvline(mag_gaia[0], color = 'r', ls = 'dashed', label = 'quality cuts')
+    ax2.axvline(mag_gaia[1], color = 'r', ls = 'dashed')
     ax2.axhline(e_pm_gaia, color = 'r', ls = 'dashed')
     
     ax2.set_xlabel('[G]')
@@ -347,41 +225,25 @@ while lopping > 0:
         duplicated_source= False,
         parallax_over_error_min=-10,
         astrometric_excess_noise_sig_max=2,
-        phot_g_mean_mag_min= mag_min_gaia,
-        phot_g_mean_mag_max=None,
-        pm_min=0,
-        pmra_error_max=e_pm_gaia,
-        pmdec_error_max=e_pm_gaia,
-        ra_error_max=e_pos_gaia,
+        phot_g_mean_mag_min = mag_gaia[1],
+        phot_g_mean_mag_max = mag_gaia[0],
+        pm_min=None,
+        pmra_error_max= e_pm_gaia,
+        pmdec_error_max= e_pm_gaia,
+        ra_error_max= e_pos_gaia,
         dec_error_max= e_pos_gaia,
         ruwe = 1.4
         )
 
-# =============================================================================
-# This elimanates random Gaia stars
-# =============================================================================
-# =============================================================================
-#     cut_gaia = int(len(gaia)*0.70)
-#     idx_cut= np.random.choice(len(gaia), size=cut_gaia, replace=False)
-# 
-#     # Subtable with the same structure and column names
-#     gaia= gaia[idx_cut]
-# =============================================================================
-# =============================================================================
-# This elimanates random Gaia stars
-# =============================================================================
+    
+    
   
-    gaia_lb = SkyCoord(ra = gaia['ra'], dec = gaia['dec'],
+    gaia_rd = SkyCoord(ra = gaia['ra'], dec = gaia['dec'],
                        pm_ra_cosdec = gaia['pmra'],
                        pm_dec = gaia['pmdec'], 
-                       frame = 'icrs', obstime = 'J2016').galactic
-    xp_g, yp_g = center.spherical_offsets_to(gaia_lb.frame)
-    gaia['xp'] = xp_g.to(u.arcsec)
-    gaia['yp'] = yp_g.to(u.arcsec)
+                       frame = 'icrs', obstime = 'J2016')
     
-    gaia['pm_l'] = gaia_lb.pm_l_cosb
-    gaia['pm_b'] = gaia_lb.pm_b
-    
+   
     tg = Time(['2016-01-01T00:00:00'],scale='utc')
     
     
@@ -395,18 +257,23 @@ while lopping > 0:
         
         return m_xy, [lx,hx,ly,hy]
     
-    # Define catalogs and times as a list of tuples
+    # Define catalogs and times as a list of tuplesçç
+    cat1 = cat_dic['cat1']
+    t1_cat = obst_dic['t1']
+    
+    cat2 = cat_dic['cat2']
+    t2_cat = obst_dic['t2']
+    
     catalogs = [
-        {'name': 'GNS1', 'gns': gns1, 'time': t1_gns, 'tag': '1'},
-        {'name': 'GNS2', 'gns': gns2, 'time': t2_gns, 'tag': '2'}
+        {'name': 'cat1', 'cat': cat1, 'time': t1_cat, 'tag': '1'},
+        {'name': 'cat2', 'cat': cat2, 'time': t2_cat, 'tag': '2'}
     ]
     
-    for c,cat in enumerate(catalogs):
-        max_sep = max_sep_ls[c]
-        print(f"\n===== Aligning {cat['name']} =====")
+    for c,cats in enumerate(catalogs):
+        # max_sep = max_sep
+        print(f"\n===== Aligning {cats['name']} =====")
     
-        dt = cat['time'] - Time('2016-01-01T00:00:00', scale='utc')
-    
+       
         # Recalculate Gaia projected positions at catalog's epoch
         
     
@@ -428,38 +295,25 @@ while lopping > 0:
             frame='icrs', obstime='J2016'
         )
         
-        gaia_rdt = gaia_rd.apply_space_motion(new_obstime = cat['time'])
+        gaia_rdt = gaia_rd.apply_space_motion(new_obstime = cats['time'])
         
-        gaia_lbt = gaia_rdt.galactic 
+        gaia[f'ra{cats["tag"]}'] = gaia_rdt.ra
+        gaia[f'dec{cats["tag"]}'] = gaia_rdt.dec
         
-        gaia[f'l{cat["tag"]}'] = gaia_lbt.l
-        gaia[f'b{cat["tag"]}'] = gaia_lbt.b
+        xp_g, yp_g = center.spherical_offsets_to(gaia_rdt.frame)
         
-        xp_g, yp_g = center.spherical_offsets_to(gaia_lbt.frame)
+        gaia['x'] = xp_g.to(u.arcsec) 
+        gaia['y'] = yp_g.to(u.arcsec) 
         
-        gaia['xp'] = xp_g.to(u.arcsec) 
-        gaia['yp'] = yp_g.to(u.arcsec) 
-        
-        gaia[f'xp_{c+1}'] = xp_g.to(u.arcsec) 
-        gaia[f'yp_{c+1}'] = yp_g.to(u.arcsec) 
+        gaia[f'x_{c+1}'] = xp_g.to(u.arcsec) 
+        gaia[f'y_{c+1}'] = yp_g.to(u.arcsec) 
          
     
-        # xp_g, yp_g = center.spherical_offsets_to(gaia_lb.frame)
-        # gaia['xp'] = xp_g.to(u.arcsec) + gaia_lb.pm_l_cosb * dt.to(u.yr)
-        # gaia['yp'] = yp_g.to(u.arcsec) + gaia_lb.pm_b * dt.to(u.yr)
+        hst_cat = cats['cat']
+        gaia_c = SkyCoord(ra = gaia[f'ra{cats["tag"]}'], dec = gaia[f'dec{cats["tag"]}'], frame='icrs')
+        cat_c = SkyCoord(ra = hst_cat['ra'], dec = hst_cat['dec'], frame='icrs')
         
-        # gaia[f'xp_{c+1}'] = xp_g.to(u.arcsec) + gaia_lb.pm_l_cosb * dt.to(u.yr)
-        # gaia[f'yp_{c+1}'] = yp_g.to(u.arcsec) + gaia_lb.pm_b * dt.to(u.yr)
-    
-        # ga_gtc = center.spherical_offsets_by(gaia['xp'], gaia['yp'])
-        # gaia[f'l{cat["tag"]}'] = ga_gtc.l
-        # gaia[f'b{cat["tag"]}'] = ga_gtc.b
-    
-        gns_cat = cat['gns']
-        gaia_c = SkyCoord(l=gaia[f'l{cat["tag"]}'], b=gaia[f'b{cat["tag"]}'], frame='galactic')
-        gns_c = SkyCoord(l=gns_cat['l'], b=gns_cat['b'], frame='galactic')
-        
-        idx1, idx2, sep2d, _ = search_around_sky(gaia_c, gns_c, max_sep)
+        idx1, idx2, sep2d, _ = search_around_sky(gaia_c, cat_c, max_sep)
 
         count1 = Counter(idx1)
         count2 = Counter(idx2)
@@ -475,14 +329,14 @@ while lopping > 0:
         idx2_clean = idx2[mask_unique]
 
         gaia_m= gaia[idx1_clean]
-        gns_m = gns_cat[idx2_clean]
+        cat_m = hst_cat[idx2_clean]
         
        
         
         
         print(40*'+')
-        unicos = unique(gns_m, keep = 'first')
-        print(len(gns_m),len(unicos))
+        unicos = unique(cat_m, keep = 'first')
+        print(len(cat_m),len(unicos))
         print(40*'+')
         
 # =============================================================================
@@ -502,12 +356,12 @@ while lopping > 0:
         fig.suptitle(f'GNS{c+1}')
         # ax.scatter(gns_w[::100], gns_cat['b'][::100], alpha =0.1, color = 'k')
         # ax.scatter(ga_w, gaia['b'], label = 'Gaia', s= 10)
-        ax.scatter(gns_cat['l'][::10], gns_cat['b'][::10], alpha =0.1, color = 'k')
-        ax.set_title(f'Matches = {len(gns_m)}\nMin dist = {max_sep} ')
-        ax.scatter(gns_m['l'], gns_m['b'], label = f'GNS{c} Match')
-        ax.scatter(gaia_m['l'], gaia_m['b'],s =10, label = 'Gaia Match')
-        ax.set_xlabel('l')
-        ax.set_ylabel('b')
+        ax.scatter(hst_cat['ra'][::10], hst_cat['dec'][::10], alpha =0.1, color = 'k')
+        ax.set_title(f'Matches = {len(cat_m)}\nMin dist = {max_sep} ')
+        ax.scatter(cat_m['ra'], cat_m['dec'], label = f'cat{c} Match')
+        ax.scatter(gaia_m['ra'], gaia_m['dec'],s =10, label = 'Gaia Match')
+        ax.set_xlabel('RA')
+        ax.set_ylabel('Dec')
         ax.legend()
         
 # =============================================================================
@@ -539,9 +393,9 @@ while lopping > 0:
 #         # Apply a similiraty trasnformation fisrt
 #         Does not make much of a difference
 # =============================================================================
-        ns_cat = cat['gns']
-        gaia_c = SkyCoord(l=gaia[f'l{cat["tag"]}'], b=gaia[f'b{cat["tag"]}'], frame='galactic')
-        gns_c = SkyCoord(l=gns_cat['l'], b=gns_cat['b'], frame='galactic')
+        ns_cat = cats['cat']
+        gaia_c = SkyCoord(ra = gaia[f'ra{cats["tag"]}'], dec = gaia[f'dec{cats["tag"]}'], frame='icrs')
+        gns_c = SkyCoord(ra = hst_cat['ra'], dec = hst_cat['dec'], frame='icrs')
         
         idx1, idx2, sep2d, _ = search_around_sky(gaia_c, gns_c, max_sep)
 
@@ -559,16 +413,18 @@ while lopping > 0:
         idx2_clean = idx2[mask_unique]
 
         gaia_m= gaia[idx1_clean]
-        gns_m = gns_cat[idx2_clean]
+        cat_m = hst_cat[idx2_clean]
         
         # Number of rows to select
        
 
 
         print(40*'+')
-        unicos = unique(gns_m, keep = 'first')
-        print(len(gns_m),len(unicos))
+        unicos = unique(cat_m, keep = 'first')
+        print(len(cat_m),len(unicos))
         print(40*'+')
+        
+        stop(427)
 # %%
         
 
