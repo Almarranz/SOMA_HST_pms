@@ -52,28 +52,31 @@ pruebas = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/pruebas/'
 # =============================================================================
 # Gaia parametres
 # =============================================================================
-radius = 150*u.arcsec
+radius = 200*u.arcsec
 max_sep = 50*u.mas
-mag_gaia = [10,20]
-e_pm_gaia = 0.3
+mag_gaia = [12,18]
+e_pm_gaia = 0.5
 e_pos_gaia = 1
 # =============================================================================
 # HST observation
 # =============================================================================
+
 pixSca = 0.12825 #arcsec/pixel
+# pixSca = 0.00001 #arcsec/pixel
+
 # =============================================================================
 # Aligment paremeters
 # =============================================================================
 # pre_transf = 'similarity'
-# transf = 'polynomial'
-transf = 'affine'
+transf = 'polynomial'
+# transf = 'affine'
 # transf = 'similarity'
 order_trans = 1
 align_loop = 'yes'
 # align_loop = 'no'
 align = 'Polywarp'
 max_deg = 3# If this is <2 it does not enter the alignment loop. 
-max_loop = 5
+max_loop = 10
 
 # =============================================================================
 # Dictionaries
@@ -81,7 +84,7 @@ max_loop = 5
 cat_dic = {}
 obst_dic = {}
 gaia_dic = {}
-
+center = SkyCoord(ra = 282.41000248, dec = -0.78212655, unit = 'degree', frame = 'icrs')
 for epoch in range(1,3):
     cat = Table.read(folder + f'{zone}/gaia_alignment/Epoch{epoch}/starfinder/{zone}_EP{epoch}_f{band}_drz_sci_stars{band}.txt', format = 'ascii')
     # ima = fits.open(f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/{zone}/gaia_alignment/Epoch{epoch}/{zone}_EP{epoch}_{band}_drz_sci.fits')
@@ -90,8 +93,8 @@ for epoch in range(1,3):
     
     cat_rd = wcs.pixel_to_world(cat['x'], cat['y'])
     
-    center = SkyCoord(ra = np.mean(cat_rd.ra.value), dec = np.mean(cat_rd.dec.value),
-                      unit = 'degree', frame = 'icrs')
+    # center = SkyCoord(ra = np.mean(cat_rd.ra.value), dec = np.mean(cat_rd.dec.value),
+    #                   unit = 'degree', frame = 'icrs')
     
     cat['ra'] = cat_rd.ra
     cat['dec'] = cat_rd.dec
@@ -134,18 +137,13 @@ for epoch in range(1,3):
         gaia = Table.read(pruebas  +f'gaia_{zone}_{radius.value: .0f}.ecsv', format = 'ascii.ecsv')
         
     gaia['id'] = np.arange(len(gaia))
-    gaia['l'] = Longitude(gaia['l']).wrap_at('180d')
-    
-       
-        
-    
-         
     
     
     fig, ax2 = plt.subplots(1,1)
     ax2.scatter(gaia['phot_g_mean_mag'],gaia['pmra_error'], s= 2, label = 'Gaia $\delta \mu_{ra}$')
     ax2.scatter(gaia['phot_g_mean_mag'],gaia['pmdec_error'], s= 2, label = 'Gaia $\delta \mu_{dec}$')
-    ax2.axvline(mag_gaia[0], color = 'r', ls = 'dashed', label = 'pm cuts')
+    ax2.axvline(mag_gaia[0], color = 'r', ls = 'dashed', label = 'cuts')
+    ax2.axvline(mag_gaia[1], color = 'r', ls = 'dashed', label = 'cuts')
     ax2.axhline(e_pm_gaia, color = 'r', ls = 'dashed')
     
     ax2.set_xlabel('[G]')
@@ -211,6 +209,7 @@ for epoch in range(1,3):
     ax.scatter(cat['x'], cat['y'])
     ax2.scatter(gaia['x'], gaia['y'])
     
+    # stop(211)
     
     gaia_dic[f'gaia{epoch}'] = gaia
     # %
@@ -364,7 +363,7 @@ cat2_xy = np.array([cat2['x'],cat2['y']]).T
 # %%
 
 
-xy_cat = compare_lists(cat1_xy, cat2_xy, 350)
+xy_cat = compare_lists(cat1_xy, cat2_xy, 0.150)
 
 cat1_c = cat1[xy_cat['ind_1']]
 cat2_c = cat2[xy_cat['ind_2']]
@@ -380,10 +379,24 @@ plot_two_pm_hists(cat1_c, 'pmx', 'pmy', r'\mu_{x}', r'\mu_{y}')
 
 
 
+gaia1 = gaia_dic['gaia1']
+plot_two_pm_hists(gaia1, 'pmra', 'pmdec', r'\mu_{RA}', r'\mu_{Dec}', title1 = 'Gaia pm')
+
+cat1_rd = SkyCoord(ra = cat1_c['ra'], dec = cat1_c['dec'], unit = 'degree', frame = 'icrs', obstime = f'J{obst_dic["t1"]}')
+idx, d2d, _ = gaia1['rdt'] .match_to_catalog_sky(cat1_rd, nthneighbor=1)
+match_mask = d2d < max_sep*3
+gaia1_m = gaia1[match_mask]
+cat1_m = cat1_c[idx[match_mask]]
+
+dpmx = gaia1_m['pmra'] - cat1_m['pmx']
+dpmy = gaia1_m['pmdec'] - cat1_m['pmy']
+
+cat1_m['dpmx'] = dpmx
+cat1_m['dpmy'] = dpmy
 
 
-
-
+# plot_two_hists_sigma(cat1_m, 'dpmx', 'dpmy', r'\Delta\,pm RA', r'\Delta\,pm Dec', bins = 'auto', title1 = f'Matches = {len(cat1_m)}')
+plot_two_hists_sigma(cat1_m, 'dpmx', 'dpmy', r'\Delta\,pm RA', r'\Delta\,pm Dec', bins = 'auto', title1 = f'Matches = {len(cat1_m)}')
 
 
 
