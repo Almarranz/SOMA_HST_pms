@@ -33,7 +33,7 @@ from astropy.stats import sigma_clip
 from alignator_gaia import alig_gaia
 from astropy.table import unique
 import gns_cluster_finder
-from filters import filter_gns_data
+from filters import filter_hst_data
 from astropy.modeling.models import Polynomial2D
 from astropy.modeling.fitting import LinearLSQFitter
 from astropy.modeling import models, fitting
@@ -45,6 +45,7 @@ from astropy.io import fits
 from astropy.wcs import WCS
 from pyplots import plot_two_hists_sigma
 from pyplots import plot_two_pm_hists
+from alignator_looping import alg_loop
 # %%plotting parametres
 from matplotlib import rc
 from matplotlib import rcParams
@@ -75,7 +76,8 @@ IPython.get_ipython().run_line_magic('matplotlib', 'inline')
 
 
 folder = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/'
-zone = 'G032.03+00.05'
+# zone = 'G032.03+00.05'
+zone = 'G028.20-00.05'
 band = '160w'
 # epoch = 2
 
@@ -88,8 +90,8 @@ pruebas = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/pruebas/'
 radius = 200*u.arcsec
 max_sep = 50*u.mas
 mag_gaia = [12,18]
-e_pm_gaia = 0.5
-e_pos_gaia = 1
+e_pm_gaia = 0.3
+e_pos_gaia = 0.5
 # =============================================================================
 # HST observation
 # =============================================================================
@@ -100,16 +102,28 @@ pixSca = 0.12825 #arcsec/pixel
 # =============================================================================
 # Aligment paremeters
 # =============================================================================
-# pre_transf = 'similarity'
+# pre_transf = 'polynomial'
+pre_transf = None
+
 transf = 'polynomial'
 # transf = 'affine'
 # transf = 'similarity'
 order_trans = 1
-align_loop = 'yes'
-# align_loop = 'no'
+# align_loop = 'yes'
+align_loop = 'no'
 align = 'Polywarp'
 max_deg = 3# If this is <2 it does not enter the alignment loop. 
-max_loop = 10
+max_loop = 3
+# gaia_clipping = 'one_one'# Clipp the Gaia outlayer one by one
+gaia_clipping = 'all'# Clipp the Gaia outlayer all at once
+
+# =============================================================================
+# Proper motions param
+# ===========================================================================
+max_dis_pm = 0.550#in arcsec
+sig_H = 3# discrd pm for stars with delta H over sig_H
+e_pm_cat = 10# im mas/yr
+
 
 # =============================================================================
 # Dictionaries
@@ -117,7 +131,7 @@ max_loop = 10
 cat_dic = {}
 obst_dic = {}
 gaia_dic = {}
-center = SkyCoord(ra = 282.41000248, dec = -0.78212655, unit = 'degree', frame = 'icrs')
+# center = SkyCoord(ra = 282.41000248, dec = -0.78212655, unit = 'degree', frame = 'icrs')
 
 
 bad = []
@@ -130,13 +144,14 @@ while lopping > 0:
     for epoch in range(1,3):
         cat = Table.read(folder + f'{zone}/gaia_alignment/Epoch{epoch}/starfinder/{zone}_EP{epoch}_f{band}_drz_sci_stars{band}.txt', format = 'ascii')
         # ima = fits.open(f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/{zone}/gaia_alignment/Epoch{epoch}/{zone}_EP{epoch}_{band}_drz_sci.fits')
-        ima = fits.open(folder  + f'{zone}/gaia_alignment/Epoch{epoch}/G032.03+00.05_EP{epoch}_f{band}_drz_sci.fits')
+        ima = fits.open(folder  + f'{zone}/gaia_alignment/Epoch{epoch}/{zone}_EP{epoch}_f{band}_drz_sci.fits')
         wcs = WCS(ima[0].header)
         
         cat_rd = wcs.pixel_to_world(cat['x'], cat['y'])
         
-        # center = SkyCoord(ra = np.mean(cat_rd.ra.value), dec = np.mean(cat_rd.dec.value),
-        #                   unit = 'degree', frame = 'icrs')
+        if epoch == 1:
+            center = SkyCoord(ra = np.mean(cat_rd.ra.value), dec = np.mean(cat_rd.dec.value),
+                              unit = 'degree', frame = 'icrs')
         
         cat['ra'] = cat_rd.ra
         cat['dec'] = cat_rd.dec
@@ -313,43 +328,43 @@ while lopping > 0:
         gaia_c = SkyCoord(ra = gaia[f'ra{cats["tag"]}'], dec = gaia[f'dec{cats["tag"]}'], frame='icrs')
         cat_c = SkyCoord(ra = hst_cat['ra'], dec = hst_cat['dec'], frame='icrs')
         
-        idx1, idx2, sep2d, _ = search_around_sky(gaia_c, cat_c, max_sep)
-
-        count1 = Counter(idx1)
-        count2 = Counter(idx2)
-
-        # Step 3: Create mask for one-to-one matches only
-        mask_unique = np.array([
-            count1[i1] == 1 and count2[i2] == 1
-            for i1, i2 in zip(idx1, idx2)
-        ])
-
-        # Step 4: Apply the mask
-        idx1_clean = idx1[mask_unique]
-        idx2_clean = idx2[mask_unique]
-
-        gaia_m= gaia[idx1_clean]
-        cat_m = hst_cat[idx2_clean]
-        
-       
-        
-        
+# =============================================================================
+#         idx1, idx2, sep2d, _ = search_around_sky(gaia_c, cat_c, max_sep)
+# 
+#         count1 = Counter(idx1)
+#         count2 = Counter(idx2)
+# 
+#         # Step 3: Create mask for one-to-one matches only
+#         mask_unique = np.array([
+#             count1[i1] == 1 and count2[i2] == 1
+#             for i1, i2 in zip(idx1, idx2)
+#         ])
+# 
+#         # Step 4: Apply the mask
+#         idx1_clean = idx1[mask_unique]
+#         idx2_clean = idx2[mask_unique]
+# 
+#         gaia_m= gaia[idx1_clean]
+#         cat_m = hst_cat[idx2_clean]
+#         
+#        
+#         
+#         
+#         print(40*'+')
+#         unicos = unique(cat_m, keep = 'first')
+#         print(len(cat_m),len(unicos))
+#         print(40*'+')
+#         
+# =============================================================================
+        idx, d2d, _ = gaia_c.match_to_catalog_sky(cat_c, nthneighbor=1)
+        match_mask = d2d < max_sep
+        gaia_m = gaia[match_mask]
+        cat_m = hst_cat[idx[match_mask]]
         print(40*'+')
         unicos = unique(cat_m, keep = 'first')
         print(len(cat_m),len(unicos))
         print(40*'+')
-        
-# =============================================================================
-#         idx, d2d, _ = gaia_c.match_to_catalog_sky(gns_c, nthneighbor=1)
-#         match_mask = d2d < max_sep
-#         gaia_m = gaia[match_mask]
-#         gns_m = gns_cat[idx[match_mask]]
-#         print(40*'+')
-#         unicos = unique(gns_m, keep = 'first')
-#         print(len(gns_m),len(unicos))
-#         print(40*'+')
-#     
-# =============================================================================
+    
        
         
         fig, (ax, ax1, ax2) = plt.subplots(1,3, figsize = (15,5))
@@ -369,31 +384,31 @@ while lopping > 0:
 #         Does not make much of a difference
 # =============================================================================
         
-# =============================================================================
-#         if pre_transf == 'similarity':
-#             psim = ski.transform.estimate_transform(
-#             pre_transf, np.array([gns_m['l'], gns_m['b']]).T,
-#                 np.array([gaia_m['l'], gaia_m['b']]).T)
-#         
-#         # if pre_transf == 'affine':
-#         #     psim = ski.transform.estimate_transform(
-#         #     pre_transf, np.array([gns_m['l'], gns_m['b']]).T,
-#         #         np.array([gaia_m['l'], gaia_m['b']]).T)
-#         
-#         else:
-#             psim = ski.transform.estimate_transform(
-#             pre_transf, np.array([gns_m['l'], gns_m['b']]).T,
-#                 np.array([gaia_m['l'], gaia_m['b']]).T, order = 1)
-#             
-#         gns_sim = psim(np.array([gns_cat['l'], gns_cat['b']]).T)
-#         gns_cat['l'] = gns_sim[:, 0]*u.deg
-#         gns_cat['b'] = gns_sim[:, 1]*u.deg
-# =============================================================================
-# =============================================================================
-#         # Apply a similiraty trasnformation fisrt
-#         Does not make much of a difference
-# =============================================================================
-        ns_cat = cats['cat']
+        if pre_transf is not None:
+            print(30*'-'+'\n'+f'Applyin a pre transformation of {pre_transf}\n'+ 30*'-')
+            if pre_transf == 'polynomial':
+                psim = ski.transform.estimate_transform(
+                pre_transf, np.array([cat_m['ra'], cat_m['dec']]).T,
+                    np.array([gaia_m['ra'], gaia_m['dec']]).T, order = 1)
+                
+    
+            else:
+                psim = ski.transform.estimate_transform(
+                pre_transf, np.array([cat_m['ra'], cat_m['dec']]).T,
+                    np.array([gaia_m['ra'], gaia_m['dec']]).T)
+            
+            # if pre_transf == 'affine':
+            #     psim = ski.transform.estimate_transform(
+            #     pre_transf, np.array([gns_m['l'], gns_m['b']]).T,
+            #         np.array([gaia_m['l'], gaia_m['b']]).T)
+            
+            
+            cat_sim = psim(np.array([hst_cat['ra'], hst_cat['dec']]).T)
+            hst_cat['ra'] = cat_sim[:, 0]*u.deg
+            hst_cat['dec'] = cat_sim[:, 1]*u.deg
+
+
+
         gaia_c = SkyCoord(ra = gaia[f'ra{cats["tag"]}'], dec = gaia[f'dec{cats["tag"]}'], frame='icrs')
         gns_c = SkyCoord(ra = hst_cat['ra'], dec = hst_cat['dec'], frame='icrs')
         
@@ -424,7 +439,6 @@ while lopping > 0:
         print(len(cat_m),len(unicos))
         print(40*'+')
         
-        stop(427)
 # %%
         
 
@@ -440,26 +454,26 @@ while lopping > 0:
             "ytick.labelsize": 16,
             "legend.fontsize": 16
         })
-            dl_pre = gns_m['l'].to(u.mas) - gaia_m['l'].to(u.mas)
-            db_pre = gns_m['b'].to(u.mas) - gaia_m['b'].to(u.mas)
+            dl_pre = cat_m['ra'].to(u.mas) - gaia_m['ra'].to(u.mas)
+            db_pre = cat_m['dec'].to(u.mas) - gaia_m['dec'].to(u.mas)
             m_pre, pre_lims = sig_cl(dl_pre, db_pre, 3)
             dl_prem = dl_pre[m_pre]
             db_prem = db_pre[m_pre]
             
             fig_pre, (ax_pre, ax1_pre) = plt.subplots(1,2,figsize = (11,5.5))
             #
-            ax_pre.set_title(f'Gaia vs GNS{c+1} (Stars = {len(gaia_m)})')
+            ax_pre.set_title(f'Gaia vs HST{c+1} (Stars = {len(gaia_m)})')
             ax1_pre.set_title(f'Residuas before any transformation')
             # ax1.set_title(f'Matching stars  = {len(d_xm)}')
             ax_pre.set_ylabel('# stars')
             ax_pre.hist(dl_pre, bins = 10,  color = 'grey', alpha = 0.5)
             ax1_pre.hist(db_pre, bins = 'auto',  color = 'grey', alpha = 0.5)
-            ax_pre.hist(dl_prem, bins = 10, histtype = 'step',lw = 2,label = '$\overline{\Delta l}$ = %.2f\n$\sigma$ = %.2f'%(np.mean(dl_prem.value),np.std(dl_prem.value)))
-            ax1_pre.hist(db_prem,bins = 'auto',histtype = 'step', lw = 2, label = '$\overline{\Delta b}$ = %.2f\n$\sigma$ = %.2f'%(np.mean(db_prem.value),np.std(db_prem.value)))
+            ax_pre.hist(dl_prem, bins = 10, histtype = 'step',lw = 2,label = '$\overline{\Delta RA}$ = %.2f\n$\sigma$ = %.2f'%(np.mean(dl_prem.value),np.std(dl_prem.value)))
+            ax1_pre.hist(db_prem,bins = 'auto',histtype = 'step', lw = 2, label = '$\overline{\Delta Dec}$ = %.2f\n$\sigma$ = %.2f'%(np.mean(db_prem.value),np.std(db_prem.value)))
             ax_pre.legend(loc = 1)
             ax1_pre.legend()
-            ax_pre.set_xlabel('$\Delta$l [mas]')
-            ax1_pre.set_xlabel('$\Delta$b [mas]')
+            ax_pre.set_xlabel('$\Delta$RA [mas]')
+            ax1_pre.set_xlabel('$\Delta$Dec [mas]')
             ax_pre.axvline(pre_lims[0].value, color = 'r', ls = 'dashed')
             ax_pre.axvline(pre_lims[1].value, color = 'r', ls = 'dashed')
             ax1_pre.axvline(pre_lims[2].value, color = 'r', ls = 'dashed')
@@ -470,7 +484,7 @@ while lopping > 0:
             
             meta = {'Script': '/Users/amartinez/Desktop/PhD/HAWK/GNS_pm_scripts/GNS_pm_absolute_SUPER/gns_gaia_alignment.py'}
             # plt.savefig(f'/Users/amartinez/Desktop/PhD/My_papers/GNS_pm_catalog/images/ABS_F1_{field_one}_gaia_resi_pos_prealign.png', dpi = 150, transparent = True, metadata = meta)
-
+        
         # continue
         
 # %%
@@ -479,42 +493,27 @@ while lopping > 0:
         # Fit transform
         if transf == 'polynomial':
             p = ski.transform.estimate_transform(
-                transf, np.array([gns_m['xp'], gns_m['yp']]).T,
-                np.array([gaia_m['xp'], gaia_m['yp']]).T, order=order_trans
+                transf, np.array([cat_m['x'], cat_m['y']]).T,
+                np.array([gaia_m['x'], gaia_m['y']]).T, order=order_trans
             )
-        elif transf == 'Weight':
-            model_x = Polynomial2D(degree=order_trans)
-            model_y = Polynomial2D(degree=order_trans)
-            
-            # Linear least-squares fitter
-            fitter = LinearLSQFitter()
-            
-            fit_xw = fitter(model_x, gns_m['xp'], gns_m['yp'],  gaia_m['xp'], weights= 1/np.sqrt( gns_m['sl']**2 +  gns_m['sb']**2))  # Fit x-coordinates
-            fit_yw = fitter(model_y, gns_m['xp'], gns_m['yp'],  gaia_m['yp'],weights= 1/np.sqrt( gns_m['sl']**2 +  gns_m['sb']**2)) 
-            
             
         else:
             p = ski.transform.estimate_transform(
-                transf, np.array([gns_m['xp'], gns_m['yp']]).T,
-                np.array([gaia_m['xp'], gaia_m['yp']]).T
+                transf, np.array([cat_m['x'], cat_m['y']]).T,
+                np.array([gaia_m['x'], gaia_m['y']]).T
             )
        
     
         
-        if transf == 'Weight':
-            
-            gns_cat['xp']  = fit_xw(gns_cat['xp'], gns_cat['yp'])
-            gns_cat['yp']  = fit_yw(gns_cat['xp'], gns_cat['yp'])
         
-        else:
-            gns_trans = p(np.array([gns_cat['xp'], gns_cat['yp']]).T)
-            gns_cat['xp'] = gns_trans[:, 0]
-            gns_cat['yp'] = gns_trans[:, 1]
-            print(p.params)
+        cat_trans = p(np.array([hst_cat['x'], hst_cat['y']]).T)
+        hst_cat['x'] = cat_trans[:, 0]
+        hst_cat['y'] = cat_trans[:, 1]
+        print(p.params)
         
-        gns_xy = np.array([gns_cat['xp'],gns_cat['yp']]).T
-        gaia_xy = np.array([gaia['xp'],gaia['yp']]).T
-        xy_mat = compare_lists(gns_xy, gaia_xy, max_sep.to(u.arcsec).value)
+        cat_xy = np.array([hst_cat['x'],hst_cat['y']]).T
+        gaia_xy = np.array([gaia['x'],gaia['y']]).T
+        xy_mat = compare_lists(cat_xy, gaia_xy, max_sep.to(u.arcsec).value)
         
         # for i in range(15):
             
@@ -542,39 +541,42 @@ while lopping > 0:
     
         # sys.exit()
         ax1.set_title(f'Matches = {len(xy_mat)}\nMin dist = {max_sep} ')
-        ax1.scatter(gns_cat['xp'][::100], gns_cat['yp'][::100], alpha =0.1, color = 'k')
-        ax1.scatter(gaia['xp'], gaia['yp'],s =10, label = 'Gaia')
-        ax1.scatter(gns_cat['xp'][xy_mat['ind_1']], gns_cat['yp'][xy_mat['ind_1']], label = 'GNS1 match')
-        ax1.scatter(gaia['xp'][xy_mat['ind_2']], gaia['yp'][xy_mat['ind_2']],s =10, label = 'Gaia match')
+        ax1.scatter(hst_cat['x'][::100], hst_cat['y'][::100], alpha =0.1, color = 'k')
+        ax1.scatter(gaia['x'], gaia['y'],s =10, label = 'Gaia')
+        ax1.scatter(hst_cat['x'][xy_mat['ind_1']], hst_cat['y'][xy_mat['ind_1']], label = f'cat{c+1} match')
+        ax1.scatter(gaia['x'][xy_mat['ind_2']], gaia['y'][xy_mat['ind_2']],s =10, label = 'Gaia match')
         ax1.set_xlabel('xp[arcsec]')
         ax1.legend()
         
+        
+        
         if align_loop  == 'yes':
             # Optional final refinement
-            # gns_cat = alg_rel(gns_cat, gaia, 'xp', 'yp', align, max_deg, max_sep.to(u.arcsec).value)
-            gns_cat = alg_loop(gns_cat, gaia, 'xp', 'yp', align, max_deg, max_sep.to(u.arcsec).value, max_loop)
             
+            # hst_cat = alg_loop(hst_cat, gaia, 'x', 'y', align, max_deg, max_sep.to(u.arcsec).value, max_loop)
+            hst_cat = alig_gaia(hst_cat, gaia, 'x', 'y', align, max_deg, max_sep.to(u.arcsec).value, max_loop)
+       
         elif align_loop == 'no':
             p2 = ski.transform.estimate_transform('polynomial', 
-                np.array([gns_cat['xp'][xy_mat['ind_1']], gns_cat['yp'][xy_mat['ind_1']]]).T,
-                np.array([gaia['xp'][xy_mat['ind_2']], gaia['yp'][xy_mat['ind_2']]]).T, order=2)
+                np.array([hst_cat['x'][xy_mat['ind_1']], hst_cat['y'][xy_mat['ind_1']]]).T,
+                np.array([gaia['x'][xy_mat['ind_2']], gaia['y'][xy_mat['ind_2']]]).T, order=2)
             
-            gns_trans = p2(np.array([gns_cat['xp'], gns_cat['yp']]).T)
+            hst_trans = p2(np.array([hst_cat['x'], hst_cat['y']]).T)
             
-            gns_cat['xp'] = gns_trans[:,0]
-            gns_cat['yp'] = gns_trans[:,1]
+            hst_cat['x'] = hst_trans[:,0]
+            hst_cat['y'] = hst_trans[:,1]
         
         
         
-        gns_xy = np.array([gns_cat['xp'],gns_cat['yp']]).T
-        gaia_xy = np.array([gaia['xp'],gaia['yp']]).T
-        xy_mat = compare_lists(gns_xy, gaia_xy, max_sep.to(u.arcsec).value)
+        hst_xy = np.array([hst_cat['x'],hst_cat['y']]).T
+        gaia_xy = np.array([gaia['x'],gaia['y']]).T
+        xy_mat = compare_lists(hst_xy, gaia_xy, max_sep.to(u.arcsec).value)
         
         ax2.set_title(f'Matches = {len(xy_mat)}\nMin dist = {max_sep} ')
-        ax2.scatter(gns_cat['xp'][::100], gns_cat['yp'][::100], alpha =0.1, color = 'k')
-        ax2.scatter(gaia['xp'], gaia['yp'],s =10, label = 'Gaia')
-        ax2.scatter(gns_cat['xp'][xy_mat['ind_1']], gns_cat['yp'][xy_mat['ind_1']], label = 'GNS1 match')
-        ax2.scatter(gaia['xp'][xy_mat['ind_2']], gaia['yp'][xy_mat['ind_2']],s =10, label = 'Gaia match')
+        ax2.scatter(hst_cat['x'][::100], hst_cat['y'][::100], alpha =0.1, color = 'k')
+        ax2.scatter(gaia['x'], gaia['y'],s =10, label = 'Gaia')
+        ax2.scatter(hst_cat['x'][xy_mat['ind_1']], hst_cat['y'][xy_mat['ind_1']], label = 'GNS1 match')
+        ax2.scatter(gaia['x'][xy_mat['ind_2']], gaia['y'][xy_mat['ind_2']],s =10, label = 'Gaia match')
         ax2.set_xlabel('xp[arcsec]')
         ax2.yaxis.set_label_position("right")
         ax2.set_ylabel('yp [arcsec]')
@@ -582,12 +584,12 @@ while lopping > 0:
         fig.tight_layout()
         plt.show()
         # Residuals
-        gns_xy = np.array([gns_cat['xp'], gns_cat['yp']]).T
-        gaia_xy = np.array([gaia['xp'], gaia['yp']]).T
-        xy_al = compare_lists(gns_xy, gaia_xy, max_sep.to(u.arcsec).value)
+        gns_xy = np.array([hst_cat['x'], hst_cat['y']]).T
+        gaia_xy = np.array([gaia['x'], gaia['y']]).T
+        xy_al = compare_lists(hst_xy, gaia_xy, max_sep.to(u.arcsec).value)
     
-        d_x = (gaia['xp'][xy_al['ind_2']] - gns_cat['xp'][xy_al['ind_1']]).to(u.mas) 
-        d_y = (gaia['yp'][xy_al['ind_2']] -gns_cat['yp'][xy_al['ind_1']] ).to(u.mas)
+        d_x = (gaia['x'][xy_al['ind_2']] - hst_cat['x'][xy_al['ind_1']]).to(u.mas) 
+        d_y = (gaia['y'][xy_al['ind_2']] - hst_cat['y'][xy_al['ind_1']] ).to(u.mas)
         
         sig_pm = 3
         # m_dx, l_dx, h_dx = sigma_clip(d_x, sigma = sig_pm, masked = True, return_bounds= True)
@@ -614,11 +616,10 @@ while lopping > 0:
         ax1.axvline(lims[2].value, color = 'r', ls = 'dashed')
         ax1.axvline(lims[3].value, color = 'r', ls = 'dashed')
         
-        cat['gns']['xp'] =  gns_cat['xp']
-        cat['gns']['yp'] =  gns_cat['yp']
+        cats['cat']['x'] = hst_cat['x']
+        cats['cat']['y'] = hst_cat['y']
         plt.show()
     
-        # stop(724)
     
     
     
@@ -626,74 +627,82 @@ while lopping > 0:
     # %%
     
     # =============================================================================
-    # GNS proper motions
+    #HST proper motions
     # =============================================================================
-    gns1_al = catalogs[0]['gns']
-    gns2_al = catalogs[1]['gns']
+    cat1_al = catalogs[0]['cat']
+    cat2_al = catalogs[1]['cat']
+    
+    dt_cat = catalogs[1]['time'].decimalyear - catalogs[0]['time'].decimalyear 
     
     
+    cat1_gxy  = np.array([cat1_al['x'], cat1_al['y']]).T 
+    cat2_gxy  = np.array([cat2_al['x'], cat2_al['y']]).T 
     
-    gns1_gxy  = np.array([gns1_al['xp'], gns1_al['yp']]).T 
-    gns2_gxy  = np.array([gns2_al['xp'], gns2_al['yp']]).T 
+    cat_com = compare_lists(cat1_gxy, cat2_gxy,max_dis_pm )
     
-    gns_com = compare_lists(gns1_gxy, gns2_gxy,max_dis_pm )
+    cat1_gxy  = cat1_gxy[cat_com['ind_1']]  
+    cat2_gxy  = cat2_gxy[cat_com['ind_2']]  
     
-    gns1_gxy  = gns1_gxy[gns_com['ind_1']]  
-    gns2_gxy  = gns2_gxy[gns_com['ind_2']]  
+    cat1 = cat1_al[cat_com['ind_1']]
+    cat2 = cat2_al[cat_com['ind_2']]
     
-    gns1 = gns1_al[gns_com['ind_1']]
-    gns2 = gns2_al[gns_com['ind_2']]
+    # dH = gns1['H'] - gns2['H']
+    # mask_H, lH, hH = sigma_clip(dH , sigma = sig_H, masked = True, return_bounds= True)
     
-    dH = gns1['H'] - gns2['H']
-    mask_H, lH, hH = sigma_clip(dH , sigma = sig_H, masked = True, return_bounds= True)
-    
-    fig, ax = plt.subplots(1,1)
-    ax.hist(dH, bins = 'auto', label = '$\overline{\Delta H}$ = %.2f\n$\sigma$ = %.2f'%(np.mean(dH), np.std(dH)))
-    ax.set_xlabel('$\Delta$H GNS')
-    ax.axvline(lH, color = 'red', ls = 'dashed', label = f'{sig_H}$\sigma$')
-    ax.axvline(hH, color = 'red', ls = 'dashed')
-    ax.legend()
+    # fig, ax = plt.subplots(1,1)
+    # ax.hist(dH, bins = 'auto', label = '$\overline{\Delta H}$ = %.2f\n$\sigma$ = %.2f'%(np.mean(dH), np.std(dH)))
+    # ax.set_xlabel('$\Delta$H GNS')
+    # ax.axvline(lH, color = 'red', ls = 'dashed', label = f'{sig_H}$\sigma$')
+    # ax.axvline(hH, color = 'red', ls = 'dashed')
+    # ax.legend()
 
     
     # sys.exit(517)
     
-    gns1 = gns1[np.logical_not(mask_H.mask)]
-    gns2 = gns2[np.logical_not(mask_H.mask)]
-    gns_com = gns_com[np.logical_not(mask_H.mask)]
-    gns1_gxy = gns1_gxy[np.logical_not(mask_H.mask)]
-    gns2_gxy = gns2_gxy[np.logical_not(mask_H.mask)]
+    # gns1 = gns1[np.logical_not(mask_H.mask)]
+    # gns2 = gns2[np.logical_not(mask_H.mask)]
+    # gns_com = gns_com[np.logical_not(mask_H.mask)]
+    # gns1_gxy = gns1_gxy[np.logical_not(mask_H.mask)]
+    # gns2_gxy = gns2_gxy[np.logical_not(mask_H.mask)]
     
     
-    pm_x = (gns_com['l2_x']*u.arcsec - gns_com['l1_x']*u.arcsec).to(u.mas)/dt_gns.to(u.yr)
-    pm_y = (gns_com['l2_y']*u.arcsec - gns_com['l1_y']*u.arcsec).to(u.mas)/dt_gns.to(u.yr)
+    pm_x = (cat_com['l2_x']*u.arcsec - cat_com['l1_x']*u.arcsec).to(u.mas)/(dt_cat*u.yr)
+    pm_y = (cat_com['l2_y']*u.arcsec - cat_com['l1_y']*u.arcsec).to(u.mas)/(dt_cat*u.yr)
     
-    dpm_x = np.sqrt((gns1['sl'].to(u.mas))**2 + (gns1['sl'].to(u.mas))**2)/dt_gns.to(u.year)
-    dpm_y = np.sqrt((gns2['sb'].to(u.mas))**2 + (gns1['sb'].to(u.mas))**2)/dt_gns.to(u.year)
+    
+   
+    err1_x = (cat1['sx']*pixSca*1000)*u.mas
+    err1_y = (cat1['sy']*pixSca*1000)*u.mas
+    err2_x = (cat2['sx']*pixSca*1000)*u.mas
+    err2_y = (cat2['sy']*pixSca*1000)*u.mas
+    
+    dpm_x = np.sqrt((err1_x)**2 + (err2_x)**2)/(dt_cat*u.yr)
+    dpm_y = np.sqrt((err1_y)**2 + (err2_y)**2)/(dt_cat*u.yr)
 
     
-    gns1['pm_xp'] = pm_x
-    gns1['pm_yp'] = pm_y
-    gns2['pm_xp'] = pm_x
-    gns2['pm_yp'] = pm_y
+    cat1['pm_x'] = pm_x
+    cat1['pm_y'] = pm_y
+    cat2['pm_x'] = pm_x
+    cat2['pm_y'] = pm_y
     
-    gns1['dpm_x'] = dpm_x
-    gns1['dpm_y'] = dpm_y
-    gns2['dpm_x'] = dpm_x
-    gns2['dpm_y'] = dpm_y
+    cat1['dpm_x'] = dpm_x
+    cat1['dpm_y'] = dpm_y
+    cat2['dpm_x'] = dpm_x
+    cat2['dpm_y'] = dpm_y
     
     
     
-    gns1.meta['Gaia_sep'] = sep_both*u.mas
-    gns1.meta['m_lim_gns'] = m_lim
-    gns1.meta['max_dis_pm'] = max_dis_pm
-    gns1.meta['e_pm_gaia'] = e_pm_gaia
-    gns1.meta['mag_min_gaia'] = mag_min_gaia
+    
+    # cat1.meta['m_lim_gns'] = m_lim
+    cat1.meta['max_dis_pm'] = max_dis_pm
+    cat1.meta['e_pm_gaia'] = e_pm_gaia
+    # cat1.meta['mag_min_gaia'] = mag_min_gaia
     
 # =============================================================================
 #     Save the catlogs with the pm
 # =============================================================================
-    gns1.write(pruebas1 + f'gns1_pmSuper_F1_{field_one}_F2_{field_two}.ecvs',format = 'ascii.ecsv', overwrite = True)
-    gns2.write(pruebas2 + f'gns2_pmSuper_F1_{field_one}_F2_{field_two}.ecvs',format = 'ascii.ecsv', overwrite = True)
+    # cat1.write(pruebas1 + f'gns1_pmSuper_F1_{field_one}_F2_{field_two}.ecvs',format = 'ascii.ecsv', overwrite = True)
+    # cat2.write(pruebas2 + f'gns2_pmSuper_F1_{field_one}_F2_{field_two}.ecvs',format = 'ascii.ecsv', overwrite = True)
     
     
 
@@ -703,8 +712,8 @@ while lopping > 0:
 
 
     
-    gns1 = filter_gns_data(gns1, max_e_pm = e_pm_gns)
-    gns2 = filter_gns_data(gns2, max_e_pm = e_pm_gns)
+    cat1 = filter_hst_data(cat1, max_e_pm = e_pm_cat)
+    cat2 = filter_hst_data(cat2, max_e_pm = e_pm_cat)
 
     # 
     # %%
@@ -712,14 +721,15 @@ while lopping > 0:
     
     
     bins = 30
+    ax.set_title(f'{zone}')
     ax.hist(pm_x, bins = bins, color = 'grey', alpha = 0.3)
     ax2.hist(pm_y, bins = bins, color = 'grey', alpha = 0.3)
     
-    ax.hist(gns1['pm_xp'], bins = bins, histtype = 'step', label = '$\overline{\mu}_{xp}$ = %.2f\n$\sigma$ =%.2f'%(np.mean(gns1['pm_xp']),np.std(gns1['pm_xp'])))
+    ax.hist(cat1['pm_x'], bins = bins, histtype = 'step', label = '$\overline{\mu}_{x}$ = %.2f\n$\sigma$ =%.2f'%(np.mean(cat1['pm_x']),np.std(cat1['pm_x'])))
     # ax.axvline(lpm[0] , ls = 'dashed', color = 'r')
     # ax.axvline(lpm[1] , ls = 'dashed', color = 'r')
     
-    ax2.hist(gns1['pm_yp'], bins = bins, histtype = 'step', label = '$\overline{\mu}_{yp}$ = %.2f\n$\sigma$ =%.2f'%(np.mean(gns1['pm_yp']),np.std(gns1['pm_yp'])))
+    ax2.hist(cat1['pm_y'], bins = bins, histtype = 'step', label = '$\overline{\mu}_{y}$ = %.2f\n$\sigma$ =%.2f'%(np.mean(cat1['pm_y']),np.std(cat1['pm_y'])))
     # ax2.axvline(lpm[2] , ls = 'dashed', color = 'r')
     # ax2.axvline(lpm[3] , ls = 'dashed', color = 'r')
     
@@ -731,34 +741,35 @@ while lopping > 0:
     fig.tight_layout()
     plt.show()
     
+    
     g_fac = 1# make the min distance 3 times bigger when comrin with Gaia
     
-    gns1_xy = np.array([gns1['xp'], gns1['yp']]).T
-    gaia1_xy = np.array([gaia['xp_1'], gaia['yp_1']]).T
-    gns1_ga = compare_lists(gns1_xy, gaia1_xy, max_sep_ls[0].to(u.arcsec).value*g_fac)
+    cat1_xy = np.array([cat1['x'], cat1['y']]).T
+    gaia1_xy = np.array([gaia['x_1'], gaia['y_1']]).T
+    cat1_ga = compare_lists(cat1_xy, gaia1_xy, max_sep.to(u.arcsec).value*g_fac)
     
-    gns2_xy = np.array([gns2['xp'], gns2['yp']]).T
-    gaia2_xy = np.array([gaia['xp_2'], gaia['yp_2']]).T
-    gns2_ga = compare_lists(gns2_xy, gaia2_xy, max_sep_ls[1].to(u.arcsec).value*g_fac)
+    cat2_xy = np.array([cat2['x'], cat2['y']]).T
+    gaia2_xy = np.array([gaia['x_2'], gaia['y_2']]).T
+    cat2_ga = compare_lists(cat2_xy, gaia2_xy, max_sep.to(u.arcsec).value*g_fac)
     
     fig, axm = plt.subplots(1,1)
-    axm.set_title('Loop %s. Gaia matches %s'%(wloop_counter, len(gaia['l'][gns1_ga['ind_2']])))
-    axm.scatter(gns1['l'], gns1['b'], color = 'k', alpha = 0.01)
-    axm.scatter(gaia['l'][gns1_ga['ind_2']], gaia['b'][gns1_ga['ind_2']])
+    axm.set_title('Loop %s. Gaia matches %s'%(wloop_counter, len(gaia['ra'][cat1_ga['ind_2']])))
+    axm.scatter(cat1['ra'], cat1['dec'], color = 'k', alpha = 0.01)
+    axm.scatter(gaia['ra'][cat1_ga['ind_2']], gaia['dec'][cat1_ga['ind_2']])
     axm.invert_xaxis()
     axm.axis('equal')
     
-   
+    
     
    
-    dpm_x = (gaia['pm_l'][gns1_ga['ind_2']] - gns1['pm_xp'][gns1_ga['ind_1']]) 
-    dpm_y = (gaia['pm_b'][gns1_ga['ind_2']] - gns1['pm_yp'][gns1_ga['ind_1']])
+    dpm_x = (gaia['pmra'][cat1_ga['ind_2']] - cat1['pm_x'][cat1_ga['ind_1']]) 
+    dpm_y = (gaia['pmdec'][cat1_ga['ind_2']] - cat1['pm_y'][cat1_ga['ind_1']])
     m_pm, lims = sig_cl(dpm_x, dpm_y, sig_pm)
     
     bad_pm = np.logical_not(m_pm)
     dpm_xm_bad = dpm_x[bad_pm]
     dpm_ym_bad = dpm_y[bad_pm]
-    bad_gaia_pm = gaia[gns1_ga['ind_2']][bad_pm]
+    bad_gaia_pm = gaia[cat1_ga['ind_2']][bad_pm]
     
     bad_loop = len(bad)
     
@@ -766,44 +777,44 @@ while lopping > 0:
         if gaia_clipping == 'one_one':
             max_bad_pm = np.argmax(np.sqrt(dpm_xm_bad**2 + dpm_ym_bad**2))
             bad_gaia_pm = bad_gaia_pm[max_bad_pm]
-            axm.annotate(bad_gaia_pm['id'], (bad_gaia_pm['l'], bad_gaia_pm['b']), xytext=(1, 1), textcoords='offset points', fontsize=15, color='black')
+            axm.annotate(bad_gaia_pm['id'], (bad_gaia_pm['ra'], bad_gaia_pm['dec']), xytext=(1, 1), textcoords='offset points', fontsize=15, color='black')
         
-        axm.scatter(bad_gaia_pm['l'], bad_gaia_pm['b'], facecolor = 'none', s = 200, color = 'red', label = f'GNS1 pm {sig_pm}$\sigma$')
+        axm.scatter(bad_gaia_pm['ra'], bad_gaia_pm['dec'], facecolor = 'none', s = 200, color = 'red', label = f'cat1 pm {sig_pm}$\sigma$')
 
         bad.append(bad_gaia_pm['id'])
         
-    dx = (gaia['xp_1'][gns1_ga['ind_2']] - gns1['xp'][gns1_ga['ind_1']])*1e3
-    dy = (gaia['yp_1'][gns1_ga['ind_2']] - gns1['yp'][gns1_ga['ind_1']])*1e3    
+    dx = (gaia['x_1'][cat1_ga['ind_2']] - cat1['x'][cat1_ga['ind_1']])*1e3
+    dy = (gaia['y_1'][cat1_ga['ind_2']] - cat1['y'][cat1_ga['ind_1']])*1e3    
     m_xy, limx =  sig_cl(dx, dy, sig_pm)
     bad_xy = np.logical_not(m_xy)
     dx_bad = dx[bad_xy]
     dy_bad = dy[bad_xy]
-    bad_gaia_xy = gaia[gns1_ga['ind_2']][bad_xy]
+    bad_gaia_xy = gaia[cat1_ga['ind_2']][bad_xy]
     
     if len(bad_gaia_xy) > 0:
         if gaia_clipping == 'one_one':
             max_bad_xy = np.argmax(np.sqrt(dx_bad**2 + dy_bad**2))
             bad_gaia_xy = bad_gaia_xy[max_bad_xy]
-            axm.annotate(bad_gaia_xy['id'], (bad_gaia_xy['l'], bad_gaia_xy['b']), xytext=(1, 1), textcoords='offset points', fontsize=15, color='black')
-        axm.scatter(bad_gaia_xy['l'], bad_gaia_xy['b'], marker = 'x', s = 200, color = 'red', label = f'GNS1 xy {sig_pm}$\sigma$')
+            axm.annotate(bad_gaia_xy['id'], (bad_gaia_xy['ra'], bad_gaia_xy['dec']), xytext=(1, 1), textcoords='offset points', fontsize=15, color='black')
+        axm.scatter(bad_gaia_xy['ra'], bad_gaia_xy['dec'], marker = 'x', s = 200, color = 'red', label = f'cat1 xy {sig_pm}$\sigma$')
 
         bad.append(bad_gaia_xy['id'])
        
     
-    dx2 = (gaia['xp_2'][gns2_ga['ind_2']] - gns2['xp'][gns2_ga['ind_1']])*1e3
-    dy2 = (gaia['yp_2'][gns2_ga['ind_2']] - gns2['yp'][gns2_ga['ind_1']])*1e3
+    dx2 = (gaia['x_2'][cat2_ga['ind_2']] - cat2['x'][cat2_ga['ind_1']])*1e3
+    dy2 = (gaia['y_2'][cat2_ga['ind_2']] - cat2['y'][cat2_ga['ind_1']])*1e3
     m_xy2, limx2 =  sig_cl(dx2, dy2, sig_pm)
     bad_xy2 = np.logical_not(m_xy2)
     dx2_bad = dx2[bad_xy2]
     dy2_bad = dy2[bad_xy2]
-    bad_gaia_xy2 = gaia[gns2_ga['ind_2']][bad_xy2]
+    bad_gaia_xy2 = gaia[cat2_ga['ind_2']][bad_xy2]
     
     if len(bad_gaia_xy2) > 0:
         if gaia_clipping == 'one_one':
             max_bad_xy2 = np.argmax(np.sqrt(dx2_bad**2 + dy2_bad**2))
             bad_gaia_xy2 = bad_gaia_xy2[max_bad_xy2]
-            axm.annotate(bad_gaia_xy2['id'], (bad_gaia_xy2['l'], bad_gaia_xy2['b']), xytext=(1, 1), textcoords='offset points', fontsize=15, color='black')
-        axm.scatter(bad_gaia_xy2['l'], bad_gaia_xy2['b'], marker = '+', s = 200, color = 'red', label = f'GNS2 xy {sig_pm}$\sigma$')
+            axm.annotate(bad_gaia_xy2['id'], (bad_gaia_xy2['ra'], bad_gaia_xy2['dec']), xytext=(1, 1), textcoords='offset points', fontsize=15, color='black')
+        axm.scatter(bad_gaia_xy2['ra'], bad_gaia_xy2['dec'], marker = '+', s = 200, color = 'red', label = f'cat2 xy {sig_pm}$\sigma$')
 
         bad.append(bad_gaia_xy2['id'])
 
@@ -822,8 +833,8 @@ while lopping > 0:
      
     
     fig, (ax1,ax2, ax3) = plt.subplots(1,3, figsize =(20,7))
-    fig.suptitle(f'Aling degree with Gaia = {max_deg-1}, Max sep = {max_sep_ls}, Stars = {len(dpm_x)}')
-    ax1.set_title('GNS-Gaia pm residuals')
+    fig.suptitle(f'Aling degree with Gaia = {max_deg-1}, Max sep = {max_sep}, Stars = {len(dpm_x)}')
+    ax1.set_title('HST-Gaia pm residuals')
     ax1.scatter(dpm_x,dpm_y, color = 'k', alpha = 0.3)
     # ax.scatter(dpm_xm,dpm_ym,edgecolor = 'k', label = '$\overline{\Delta \mu_{x}}$ = %.2f, $\sigma$ = %.2f\n''$\overline{\Delta \mu_{y}}$ = %.2f, $\sigma$ = %.2f'%(np.mean(dpm_xm),np.std(dpm_xm),np.mean(dpm_ym),np.std(dpm_ym)))
     ax1.axvline(lims[0], color = 'r', ls = 'dashed', label = f'{sig_pm}$\sigma$')
@@ -834,7 +845,7 @@ while lopping > 0:
     
     for x, y, label in zip(dpm_x[bad_pm],
                            dpm_y[bad_pm],
-                           gaia['id'][gns1_ga['ind_2']][bad_pm]):
+                           gaia['id'][cat1_ga['ind_2']][bad_pm]):
         print(x, y, label )
         ax1.annotate(str(label), xy=(x, y), xytext=(1,1), textcoords='offset points',
                     fontsize=15, color='black')
@@ -847,13 +858,13 @@ while lopping > 0:
     
     for x, y, label in zip(dx[bad_xy],
                            dy[bad_xy],
-                           gaia['id'][gns1_ga['ind_2']][bad_xy]):
+                           gaia['id'][cat1_ga['ind_2']][bad_xy]):
         print(x, y, label )
         ax2.annotate(str(label), xy=(x, y), xytext=(1, 1), textcoords='offset points',
                     fontsize=15, color='black')
     
     
-    ax2.set_title('GNS1-Gaia pos. residuals')
+    ax2.set_title('cat1-Gaia pos. residuals')
     ax2.scatter(dx,dy, color = 'k', alpha = 0.3)
     # ax2.scatter(dx_m,dy_m, edgecolor = 'k',label = '$\overline{\Delta x}$ = %.2f, $\sigma$ = %.2f\n''$\overline{\Delta y}$ = %.2f, $\sigma$ = %.2f'%(np.mean(dx_m),np.std(dx_m),np.mean(dy_m),np.std(dy_m)))
     ax2.axvline(limx[0], color = 'r', ls = 'dashed', label = f'{sig_pm}$\sigma$')
@@ -867,12 +878,12 @@ while lopping > 0:
     
     for x, y, label in zip(dx2[bad_xy2],
                            dy2[bad_xy2],
-                           gaia['id'][gns2_ga['ind_2']][bad_xy2]):
+                           gaia['id'][cat2_ga['ind_2']][bad_xy2]):
         print(x, y, label )
         ax3.annotate(str(label), xy=(x, y), xytext=(1, 1), textcoords='offset points',
                     fontsize=15, color='black')
     
-    ax3.set_title('GNS2-Gaia pos. residuals')
+    ax3.set_title('cat2-Gaia pos. residuals')
     ax3.scatter(dx2,dy2, color = 'k', alpha = 0.3)
     # ax3.scatter(dx_m2,dy_m2,edgecolor = 'k', label = '$\overline{\Delta x}$ = %.2f, $\sigma$ = %.2f\n''$\overline{\Delta y}$ = %.2f, $\sigma$ = %.2f'%(np.mean(dx_m2),np.std(dx_m2),np.mean(dy_m2),np.std(dy_m2)))
     ax3.axvline(limx2[0], color = 'r', ls = 'dashed', label = f'{sig_pm}$\sigma$')
@@ -901,19 +912,20 @@ while lopping > 0:
 })
     fig, (ax, ax2) = plt.subplots(1, 2, figsize=(10, 5))
     
-    ax.set_title(f'# Gaia = {len(dpm_x)} ')
+    ax2.set_title(f'# Gaia = {len(dpm_x)} ')
+    ax.set_title(f'{zone}')
     ax.hist(dpm_x, histtype='step', bins='auto', lw=2,
-            label='$\overline{\Delta \mu_{l}}$ = %.2f'
-                  '\n$\sigma_b$ = %.2f' % 
+            label='$\overline{\Delta \mu_{RA}}$ = %.2f'
+                  '\n$\sigma_{\mu Ra}$ = %.2f' % 
                   (np.mean(dpm_x), np.std(dpm_x)))
     
     ax2.hist(dpm_y, histtype='step', bins='auto', lw=2,
-             label='$\overline{\Delta \mu_{b}}$ = %.2f'
-                   '\n$\sigma_l$ = %.2f' % 
+             label='$\overline{\Delta \mu_{Dec}}$ = %.2f'
+                   '\n$\sigma_{\mu Dec}$ = %.2f' % 
                    (np.mean(dpm_y), np.std(dpm_y)))
     
-    ax.set_xlabel(r'$\Delta \mu_{l}$ [mas/yr]')
-    ax2.set_xlabel(r'$\Delta \mu_{b}$ [mas/yr]')
+    ax.set_xlabel(r'$\Delta \mu_{RA}$ [mas/yr]')
+    ax2.set_xlabel(r'$\Delta \mu_{Dec}$ [mas/yr]')
     ax.set_ylabel('# stars')
     ax.set_xlim(-3,3)
     ax2.set_xlim(-3,3)
@@ -945,12 +957,15 @@ while lopping > 0:
         
         lopping = 0
         print('no  more 3sigmas')
-        gaia[gns1_ga['ind_2']].write(pruebas1  + f'gaia_refstars_F{field_one}_F{field_two}.txt', format = 'ascii', overwrite = True)
+        # gaia[cat1_ga['ind_2']].write(pruebas1  + f'gaia_refstars_F{field_one}_F{field_two}.txt', format = 'ascii', overwrite = True)
         # sys.exit('no  more 3sigmas')
+# %%
     
     wloop_counter += 1
     
-# stop(973)
+stop(959)
+
+
 values = [len(gns1_ga),
       np.mean(dpm_x), np.std(dpm_x),
       np.mean(dpm_y), np.std(dpm_y)]
@@ -999,68 +1014,6 @@ if look_for_cluster == 'yes':
                                  modes[0],
                                  gns2['H'],gns2['H'],
                                  knn,gen_sim,sim_lim, save_reg = pruebas1)
-#     elif destination == 1:
-#         clus_dic = gns_cluster_finder.finder(gns1_mpm['pm_x'], gns1_mpm['pm_y'],
-#                                      gns1_mpm['xp'], gns1_mpm['yp'], 
-#                                      gns1_mpm['l'].value, gns1_mpm['b'].value,
-#                                      modes[0],
-#                                      gns1_mpm['H'],gns1_mpm['H'],
-#                                      knn,gen_sim,sim_lim, save_reg = pruebas1)
-# # %%
-
-
-# =============================================================================
-# zone =  'F20_f01_f06_H'
-# 
-# scamp_f = '/Users/amartinez/Desktop/Projects/GNS_gd/scamp/GNS0/%s/'%(zone)
-# 
-# try:
-#     cat = Table.read(scamp_f +f'merged_{zone}_1.ocat', format = 'ascii') 
-# except:
-#     cat = Table.read(scamp_f +f'merged_{zone}.ocat', format = 'ascii') 
-# vel_max = 50
-# pm_mask = (abs(cat['PMALPHA_J2000']) <vel_max) &  (abs(cat['PMDELTA_J2000']) <vel_max) & (abs(cat['PMALPHA_J2000']) >1e-5) &  (abs(cat['PMDELTA_J2000']) >1e-5)
-# cat = cat[pm_mask]
-# 
-# cat_c = SkyCoord(ra = cat['ALPHA_J2000'], dec = cat['DELTA_J2000'], frame = 'fk5').galactic
-# gns_c = SkyCoord(l = gns1['l'], b = gns1['b'], frame = 'galactic')
-# 
-# 
-# 
-# # %
-# max_seo = 50*u.mas
-# idx, d2d, _ = cat_c.match_to_catalog_sky(gns_c, nthneighbor=1)
-# match_mask = d2d < max_sep
-# cat_m = cat[match_mask]
-# gns_m = gns1[idx[match_mask]]
-# 
-# # %
-# fig, ax = plt.subplots(1,1)
-# ax.scatter(cat_c.l,cat_c.b)
-# ax.scatter(cat_c.l[match_mask],cat_c.b[match_mask])
-# 
-# 
-# dpmx = (gns_m['pm_xp'] - cat_m['PMALPHA_J2000'])
-# dpmy = (gns_m['pm_yp'] - cat_m['PMDELTA_J2000'])
-# 
-# m_pm, lim = sig_cl(dpmx, dpmy, 3) 
-# 
-# dpmx_m = dpmx[m_pm]
-# dpmy_m = dpmy[m_pm]
-# 
-# 
-# fig, ax = plt.subplots(1,1)
-# 
-# ax.scatter(dpmx,dpmy, color = 'k', alpha = 0.3)
-# ax.axvline(lims[0], color = 'r', ls = 'dashed', label = f'{sig_pm}$\sigma$')
-# ax.scatter(dpmx_m,dpmy_m,edgecolor = 'k', label = '$\overline{\Delta \mu_{x}}$ = %.2f, $\sigma$ = %.2f\n''$\overline{\Delta \mu_{y}}$ = %.2f, $\sigma$ = %.2f'%(np.mean(dpmx_m),np.std(dpmx_m),np.mean(dpmy_m),np.std(dpmy_m)))
-# ax.axvline(lim[1], color = 'r', ls = 'dashed')
-# ax.axhline(lim[2], color = 'r', ls = 'dashed')
-# ax.axhline(lim[3], color = 'r', ls = 'dashed')
-# ax.legend()
-# 
-# =============================================================================
-
 
 
 
