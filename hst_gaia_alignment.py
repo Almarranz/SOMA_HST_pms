@@ -46,6 +46,8 @@ from astropy.wcs import WCS
 from pyplots import plot_two_hists_sigma
 from pyplots import plot_two_pm_hists
 from alignator_looping import alg_loop
+from ds9_region import region_vectors
+from ds9_region import region
 # %%plotting parametres
 from matplotlib import rc
 from matplotlib import rcParams
@@ -79,6 +81,7 @@ folder = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability
 # zone = 'G032.03+00.05'
 zone = 'G028.20-00.05'
 band = '160w'
+# band = '128n'
 # epoch = 2
 
 pruebas = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/pruebas/'
@@ -120,9 +123,9 @@ gaia_clipping = 'all'# Clipp the Gaia outlayer all at once
 # =============================================================================
 # Proper motions param
 # ===========================================================================
-max_dis_pm = 0.550#in arcsec
+max_dis_pm = 0.150#in arcsec
 sig_H = 3# discrd pm for stars with delta H over sig_H
-e_pm_cat = 10# im mas/yr
+e_pm_cat = 1# im mas/yr
 
 
 # =============================================================================
@@ -159,13 +162,21 @@ while lopping > 0:
         cat['x'] = cat['x']*pixSca # These are arcsec
         cat['y'] = cat['y']*pixSca
         
+        cat['sx'] = cat['sx']*pixSca # These are arcsec
+        cat['sy'] = cat['sy']*pixSca
+        
         mjd = ima[0].header['EXPSTART']   # e.g., 57610.4918468
         obst = Time(mjd, format='mjd', scale='utc')
         # obst_dic[f't{epoch}'] = obst.decimalyear
         obst_dic[f't{epoch}'] = obst
     
         cat_dic[f'cat{epoch}'] = cat
+        
+        region(cat, 'ra', 'dec',
+               name = f'{zone}_Ep{epoch}_stars',
+               save_in = pruebas)
     
+    stop(179)
     # m_mask1 = (gns1['H'] > m_lim[0]) & (gns1['H'] < m_lim[1])
     # gns1 = gns1[m_mask1]
     
@@ -317,6 +328,8 @@ while lopping > 0:
         
         xp_g, yp_g = center.spherical_offsets_to(gaia_rdt.frame)
         
+        
+        
         gaia['x'] = xp_g.to(u.arcsec) 
         gaia['y'] = yp_g.to(u.arcsec) 
         
@@ -328,6 +341,25 @@ while lopping > 0:
         gaia_c = SkyCoord(ra = gaia[f'ra{cats["tag"]}'], dec = gaia[f'dec{cats["tag"]}'], frame='icrs')
         cat_c = SkyCoord(ra = hst_cat['ra'], dec = hst_cat['dec'], frame='icrs')
         
+        
+# =============================================================================
+#         # This proyect Gaia proper motions on the same tangentical plas of that of the proyected x,y coordenates
+#         # The projected pm are exactly the same that the Gaia propermotions...
+#         offset_frame = center.skyoffset_frame()
+# 
+#         c_proj = gaia_rdt.transform_to(offset_frame)
+# 
+#         # Step 3: Extract Gaia PM in tangent plane (same as your XY frame, in mas/yr)
+#         pm_x_gaia = c_proj.pm_lon_coslat  # mas/yr
+#         pm_y_gaia = c_proj.pm_lat        # mas/yr
+# 
+#         gaia['pm_x'] = pm_x_gaia
+#         gaia['pm_y'] = pm_y_gaia
+# =============================================================================
+        
+        
+        
+    
 # =============================================================================
 #         idx1, idx2, sep2d, _ = search_around_sky(gaia_c, cat_c, max_sep)
 # 
@@ -671,13 +703,13 @@ while lopping > 0:
     
     
    
-    err1_x = (cat1['sx']*pixSca*1000)*u.mas
-    err1_y = (cat1['sy']*pixSca*1000)*u.mas
-    err2_x = (cat2['sx']*pixSca*1000)*u.mas
-    err2_y = (cat2['sy']*pixSca*1000)*u.mas
+    err1_x = (cat1['sx'])*u.arcsec
+    err1_y = (cat1['sy'])*u.arcsec
+    err2_x = (cat2['sx'])*u.arcsec
+    err2_y = (cat2['sy'])*u.arcsec
     
-    dpm_x = np.sqrt((err1_x)**2 + (err2_x)**2)/(dt_cat*u.yr)
-    dpm_y = np.sqrt((err1_y)**2 + (err2_y)**2)/(dt_cat*u.yr)
+    dpm_x = np.sqrt((err1_x.to(u.mas))**2 + (err2_x.to(u.mas))**2)/(dt_cat*u.yr)
+    dpm_y = np.sqrt((err1_y.to(u.mas))**2 + (err2_y.to(u.mas))**2)/(dt_cat*u.yr)
 
     
     cat1['pm_x'] = pm_x
@@ -711,7 +743,7 @@ while lopping > 0:
     # gns2.meta['f_mode'] = f_mode
 
 
-    
+    # stop()
     cat1 = filter_hst_data(cat1, max_e_pm = e_pm_cat)
     cat2 = filter_hst_data(cat2, max_e_pm = e_pm_cat)
 
@@ -721,7 +753,7 @@ while lopping > 0:
     
     
     bins = 30
-    ax.set_title(f'{zone}')
+    ax.set_title(f'{zone}, f{band}')
     ax.hist(pm_x, bins = bins, color = 'grey', alpha = 0.3)
     ax2.hist(pm_y, bins = bins, color = 'grey', alpha = 0.3)
     
@@ -913,7 +945,7 @@ while lopping > 0:
     fig, (ax, ax2) = plt.subplots(1, 2, figsize=(10, 5))
     
     ax2.set_title(f'# Gaia = {len(dpm_x)} ')
-    ax.set_title(f'{zone}')
+    ax.set_title(f'{zone}, f{band}')
     ax.hist(dpm_x, histtype='step', bins='auto', lw=2,
             label='$\overline{\Delta \mu_{RA}}$ = %.2f'
                   '\n$\sigma_{\mu Ra}$ = %.2f' % 
@@ -959,61 +991,91 @@ while lopping > 0:
         print('no  more 3sigmas')
         # gaia[cat1_ga['ind_2']].write(pruebas1  + f'gaia_refstars_F{field_one}_F{field_two}.txt', format = 'ascii', overwrite = True)
         # sys.exit('no  more 3sigmas')
-# %%
+
     
     wloop_counter += 1
     
-stop(959)
-
-
-values = [len(gns1_ga),
-      np.mean(dpm_x), np.std(dpm_x),
-      np.mean(dpm_y), np.std(dpm_y)]
-
-filepath = pruebas1 + 'alignment_stimation.txt'
-
-# Check if file already exists
-file_exists = os.path.isfile(filepath)
-
-# Open in append mode
-with open(filepath, 'a') as f:
-    # If file didn't exist, write header
-    if not file_exists:
-        header = "num_gaia mean_dpm_x std_dpm_x mean_dpm_y std_dpm_y\n"
-        f.write(header)
-
-    # Write the new line
-    line = " ".join(map(str, values)) + "\n"
-    f.write(line)
 # %%
 
 
-# %%
-if look_for_cluster == 'yes':
+region_vectors(
+    table=cat1[cat1_ga['ind_1']],
+    ra_col='ra',
+    dec_col='dec',
+    pmra_col='pm_x',
+    pmdec_col='pm_y',
+    name=f'{zone}_{band}_f{band}_vec',
+    save_in = pruebas,
+    color='cyan',
+    wcs='fk5',
+    scale=1
+)
+# 
+region_vectors(
+    table=gaia[cat1_ga['ind_2']],
+    ra_col='ra',
+    dec_col='dec',
+    pmra_col='pmra',
+    pmdec_col='pmdec',
+    name=f'gaia_{zone}_{band}_f{band}_vec',
+    save_in = pruebas,
+    color='red',
+    wcs='fk5',
+    scale=1,
+    width = 5
+)
+
+
+
+
+# values = [len(gns1_ga),
+#       np.mean(dpm_x), np.std(dpm_x),
+#       np.mean(dpm_y), np.std(dpm_y)]
+
+# filepath = pruebas1 + 'alignment_stimation.txt'
+
+# # Check if file already exists
+# file_exists = os.path.isfile(filepath)
+
+# # Open in append mode
+# with open(filepath, 'a') as f:
+#     # If file didn't exist, write header
+#     if not file_exists:
+#         header = "num_gaia mean_dpm_x std_dpm_x mean_dpm_y std_dpm_y\n"
+#         f.write(header)
+
+#     # Write the new line
+#     line = " ".join(map(str, values)) + "\n"
+#     f.write(line)
+# # %%
+
+
+# # %%
+# if look_for_cluster == 'yes':
     
    
-    # modes = ['pm_xy_color']
-    modes = ['pm_xy']
-    knn = 20
-    gen_sim = 'kernnel'
-    sim_lim ='minimun'
-    # sim_lim ='mean'
+#     # modes = ['pm_xy_color']
+#     modes = ['pm_xy']
+#     knn = 20
+#     gen_sim = 'kernnel'
+#     sim_lim ='minimun'
+#     # sim_lim ='mean'
 
-# clus_dic = gns_cluster_finder.finder(gns1['pm_xp'], gns1['pm_yp'],
-#                              # gns1['xp'], gns1['yp'], 
-#                              gns1['xp'], gns1['yp'], 
-#                              gns1['l'].value, gns1['b'].value,
-#                              modes[0],
-#                              gns1['H'],gns1['H'],
-#                              knn,gen_sim,sim_lim, save_reg = pruebas1)
+# # clus_dic = gns_cluster_finder.finder(gns1['pm_xp'], gns1['pm_yp'],
+# #                              # gns1['xp'], gns1['yp'], 
+# #                              gns1['xp'], gns1['yp'], 
+# #                              gns1['l'].value, gns1['b'].value,
+# #                              modes[0],
+# #                              gns1['H'],gns1['H'],
+# #                              knn,gen_sim,sim_lim, save_reg = pruebas1)
 
-    clus_dic = gns_cluster_finder.finder(gns2['pm_xp'], gns2['pm_yp'],
-                                 # gns1['xp'], gns1['yp'], 
-                                 gns2['xp'], gns2['yp'], 
-                                 gns2['l'].value, gns2['b'].value,
-                                 modes[0],
-                                 gns2['H'],gns2['H'],
-                                 knn,gen_sim,sim_lim, save_reg = pruebas1)
+#     clus_dic = gns_cluster_finder.finder(gns2['pm_xp'], gns2['pm_yp'],
+#                                  # gns1['xp'], gns1['yp'], 
+#                                  gns2['xp'], gns2['yp'], 
+#                                  gns2['l'].value, gns2['b'].value,
+#                                  modes[0],
+#                                  gns2['H'],gns2['H'],
+#                                  knn,gen_sim,sim_lim, save_reg = pruebas1)
 
 
 

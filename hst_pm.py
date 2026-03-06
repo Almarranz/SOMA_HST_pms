@@ -40,6 +40,7 @@ from astropy.io import fits
 from astropy.wcs import WCS
 from pyplots import plot_two_hists_sigma
 from pyplots import plot_two_pm_hists
+from ds9_region import region_vectors
 folder = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/'
 zone = 'G032.03+00.05'
 band = '160w'
@@ -397,6 +398,8 @@ cat1_m['dpmy'] = dpmy
 # plot_two_hists_sigma(cat1_m, 'dpmx', 'dpmy', r'\Delta\,pm RA', r'\Delta\,pm Dec', bins = 'auto', title1 = f'Matches = {len(cat1_m)}')
 plot_two_hists_sigma(cat1_m, 'dpmx', 'dpmy', r'\Delta\,pm RA', r'\Delta\,pm Dec', bins = 'auto', title1 = f'Matches = {len(cat1_m)}')
 
+
+# %%
 
 
 
