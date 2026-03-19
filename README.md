@@ -26,7 +26,7 @@ First, we run *Starfinder* over the "drizzeled" images. (Drizzeled images have b
 
          idl -e \"astrophot, '<zone>', '<band>', '<epoch>'\
 
-3. `hst_photometry.py`
+3. `hst_photometry.py` 
     Calibrate the images. 
     > WORK in PROGRESS
 
