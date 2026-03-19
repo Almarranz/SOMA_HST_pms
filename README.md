@@ -22,11 +22,12 @@ First, we run *Starfinder* over the "drizzeled" images. (Drizzeled images have b
     Manual for *Starfinder* widget : `/Users/amartinez/Desktop/PhD/StarFinder/starfinder_manual.pdf`
 
 2. `astrophot.pro`
+   
     Generate the stars lists.
 
          idl -e \"astrophot, '<zone>', '<band>', '<epoch>'\
 
-3. `hst_photometry.py` 
+4. `hst_photometry.py` 
     Calibrate the images. 
     > WORK in PROGRESS
 
