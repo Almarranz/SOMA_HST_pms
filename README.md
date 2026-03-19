@@ -9,12 +9,12 @@ First, we run *Starfinder* over the "drizzeled" images. (Drizzeled images have b
 1. `extractpsf.pro` 
     Extract the psf.
 
-    .. code:: 
+ 
         idl -e \"extractpsf, 'G028.20-00.05', '160w', '2'\
 
     This script generate the psf automatically, and seems to work correctly. However, there is the possiboity to use *Starfinde* widget to do so. Just open a terminal al type:
 
-    .. code:: 
+    
 
         idl 89
         > xtstarfinder 
