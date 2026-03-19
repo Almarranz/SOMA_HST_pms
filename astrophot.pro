@@ -1,6 +1,8 @@
 PRO ASTROPHOT, zone, filter, epoch
 
-
+; zone = 'G028.20-00.05'
+; filter = '160w'
+; epoch = '1'
 ; path = '/Users/fedriani/Documents/postdoc_iaa/HST_project/HST_data/G028.20-00.05/gaia_alignment/Epoch1/starfinder/'
 path = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/'+ zone +'/gaia_alignment/Epoch'+ epoch +'/'
 pruebas = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/pruebas/'
@@ -8,15 +10,10 @@ tmpdir = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/'+ zone +'/f'
 results = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/'+ zone +'/f'+ filter +'/epoch'+ epoch +'/'
 
 
-;nam = '../G028.20-00.05_EP1_f110w_drz_sci'
-;filter = '110w'
-;nam = '../G028.20-00.05_EP1_f128n_drz_sci'
-;filter = '128n'
-; nam = 'G028.20-00.05_EP1_f160w_drz_sci'
-nam = zone +'_EP'+ epoch + '_f'+ filter + '_drz_sci'
-; filter = '160w'
-; nam = '../G028.20-00.05_EP1_f164n_drz_sci'
-; filter = '164n'
+
+; nam = zone +'_EP'+ epoch + '_f'+ filter + '_drz_sci'
+nam = 'hst_ep'+ epoch + '_f'+ filter + '_drz'
+
 
 print, nam
 
@@ -24,13 +21,13 @@ print, nam
 ;   if not(FILE_TEST(path + 'tmp')) then FILE_MKDIR, path + 'tmp'
   if not(FILE_TEST(results + 'tmp')) then FILE_MKDIR, results + 'tmp'
   
-stop
 
 ;   psf = readfits(path + 'psf_'+filter+'.fits') ;use Rainer's PSF worst case scenerio. psf = readfits(path + 'psf_'+filter+'_rainer.fits')
   psf = readfits(tmpdir + 'psf_'+filter+'.fits') ;use Rainer's PSF worst case scenerio. psf = readfits(path + 'psf_'+filter+'_rainer.fits')
 
   ; load image and noise map
-  im = readfits(path + nam + '.fits',header,EXT=0) ;careful here! check the extension!
+;   im = readfits(path + nam + '.fits',header,EXT=0) ;careful here! check the extension!
+  im = readfits(path + nam + '.fits',header,EXT=1) ;careful here! check the extension!
   good = where(FINITE(im),complement=isnan)
   im[isnan] = 0
   noise = sqrt(im)
@@ -53,10 +50,10 @@ stop
 ; This means that our simple noise map overestiamtes the actual uncertainties
 ; ------------------------------------------------
 
-;   sf_thresh = [.5,.5]
-  sf_thresh = [1.,1.]
-  back_box = 10
-  deblend = 1
+  sf_thresh = [.5,.5]
+;   sf_thresh = [1.,1.]
+  back_box = 20
+  deblend = 0
   deblost = 0
   compbg = 1
   posbg = 1
@@ -95,11 +92,11 @@ stop
         LOGFILE = logfilename, /CUBIC, $
         XBAD = xbad, YBAD = ybad, POSBG = posbg
 
-  writefits, pruebas + STRMID(nam,0,100) + '_stars'+filter+'.fits', stars, header
-  writefits, pruebas + STRMID(nam,0,100) + '_bg'+filter+'.fits', background, header
-  writefits, pruebas + STRMID(nam,0,100) + '_resid'+filter+'.fits', im-stars-background, header
+  writefits, tmpdir + STRMID(nam,0,100) + '_stars'+filter+'.fits', stars, header
+  writefits, tmpdir + STRMID(nam,0,100) + '_bg'+filter+'.fits', background, header
+  writefits, tmpdir + STRMID(nam,0,100) + '_resid'+filter+'.fits', im-stars-background, header
   subtracted = im-stars
-  writefits, pruebas + STRMID(nam,3,100) + '_subtracted'+filter+'.fits', subtracted, header
+  writefits, tmpdir + STRMID(nam,0,100) + '_subtracted'+filter+'.fits', subtracted, header
   
 ;   writefits, path + STRMID(nam,3,100) + '_stars'+filter+'.fits', stars, header, /COMPRESS
 ;   writefits, path + STRMID(nam,3,100) + '_bg'+filter+'.fits', background, header, /COMPRESS
@@ -130,7 +127,7 @@ stop
   dat = ptr_new({X_size: 10, Y_size: 10, Sigma_x: 1.0, Sigma_y: 1.0, Angle: 0.0})
   im = image_model(x,y,f,n1,n2,'gaussian', dat)
 ;   writefits, path + STRMID(nam,3,100) + '_map'+filter+'.fits', im, /COMPRESS
-  writefits, pruebas + STRMID(nam,0,100) + '_map'+filter+'.fits', im 
+  writefits, tmpdir + STRMID(nam,0,100) + '_map'+filter+'.fits', im 
 
 
   print, 'Finished ' + nam + '.'

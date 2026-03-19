@@ -1,4 +1,4 @@
-xPRO CALEVAL, X, P, YMOD
+PRO CALEVAL, X, P, YMOD
 
   YMOD = P[0]*X
   YMOD = image_shift(YMOD,P[1],P[2])
@@ -58,7 +58,7 @@ END
 PRO PSFMAKER, x_ref, y_ref, x_stars, y_stars, f_stars, image, noise, nrad, FOVMASK = thisfov, PSF=psf,  BACKGROUND=background, DEBUG = debug, ITER = iter, THRESHOLD = Threshold, MINDIST = mindist, NOISE_PSF = psf_sigma, MASKRAD = mrad, UNWEIGHTED=unweighted, TMPDIR = tmpdir, LOCAL_SKY=local_sky, USE_CENTROID=use_centroid, oversamp = oversamp
 
 
-;  print, 'HERE'
+ print, 'USING PSFMAKER'
  if not(keyword_set(Threshold)) then Threshold = [5.]
  if not(keyword_set(debug)) then debug = 0
  if not(keyword_set(oversamp)) then oversamp = 1

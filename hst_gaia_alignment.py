@@ -48,27 +48,12 @@ from pyplots import plot_two_pm_hists
 from alignator_looping import alg_loop
 from ds9_region import region_vectors
 from ds9_region import region
+from matplotlib.colors import LogNorm
+import cluster_finder
 # %%plotting parametres
 from matplotlib import rc
 from matplotlib import rcParams
-rcParams.update({'xtick.major.pad': '7.0'})
-rcParams.update({'xtick.major.size': '7.5'})
-rcParams.update({'xtick.major.width': '1.5'})
-rcParams.update({'xtick.minor.pad': '7.0'})
-rcParams.update({'xtick.minor.size': '3.5'})
-rcParams.update({'xtick.minor.width': '1.0'})
-rcParams.update({'ytick.major.pad': '7.0'})
-rcParams.update({'ytick.major.size': '7.5'})
-rcParams.update({'ytick.major.width': '1.5'})
-rcParams.update({'ytick.minor.pad': '7.0'})
-rcParams.update({'ytick.minor.size': '3.5'})
-rcParams.update({'ytick.minor.width': '1.0'})
-rcParams.update({'font.size': 20})
-rcParams.update({'figure.figsize':(10,5)})
-rcParams.update({
-    "text.usetex": False,
-    "font.family": "sans",
-    "font.sans-serif": ["Palatino"]})
+
 plt.rcParams["mathtext.fontset"] = 'dejavuserif'
 rc('font',**{'family':'serif','serif':['Palatino']})
 plt.rcParams.update({'figure.max_open_warning': 0})# a warniing for matplot lib pop up because so many plots, this turining it of
@@ -78,8 +63,10 @@ IPython.get_ipython().run_line_magic('matplotlib', 'inline')
 
 
 folder = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/'
-# zone = 'G032.03+00.05'
-zone = 'G028.20-00.05'
+# results = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band}/epoch{epoch}/'
+# results = ''
+zone = 'G032.03+00.05'
+# zone = 'G028.20-00.05'
 band = '160w'
 # band = '128n'
 # epoch = 2
@@ -92,28 +79,32 @@ pruebas = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/pruebas/'
 # =============================================================================
 radius = 200*u.arcsec
 max_sep = 50*u.mas
-mag_gaia = [12,18]
+mag_gaia = [10,18]
 e_pm_gaia = 0.3
-e_pos_gaia = 0.5
+e_pos_gaia = 1
 # =============================================================================
 # HST observation
 # =============================================================================
 
 pixSca = 0.12825 #arcsec/pixel
-# pixSca = 0.00001 #arcsec/pixel
+# pixSca = 0.00001 #arcsec/pixel#
 
+e_pos_cat  = 0.05# in arcsec. The position errors from starfinder lists are largely overstatimated!!!
+
+red_techn = 'Gaia'
+# red_techn = 'Original'
 # =============================================================================
 # Aligment paremeters
 # =============================================================================
 # pre_transf = 'polynomial'
 pre_transf = None
 
-transf = 'polynomial'
-# transf = 'affine'
-# transf = 'similarity'
+# transf = 'polynomial'
+# transf = 'affine' # Transformation before loopings
+transf = 'similarity'
 order_trans = 1
-# align_loop = 'yes'
-align_loop = 'no'
+align_loop = 'yes'
+# align_loop = 'no'
 align = 'Polywarp'
 max_deg = 3# If this is <2 it does not enter the alignment loop. 
 max_loop = 3
@@ -125,7 +116,12 @@ gaia_clipping = 'all'# Clipp the Gaia outlayer all at once
 # ===========================================================================
 max_dis_pm = 0.150#in arcsec
 sig_H = 3# discrd pm for stars with delta H over sig_H
-e_pm_cat = 1# im mas/yr
+e_pm_cat = 20# im mas/yr
+
+# =============================================================================
+# CLUSTERS
+# =============================================================================
+look_for_cluster = 'yes'
 
 
 # =============================================================================
@@ -141,14 +137,26 @@ bad = []
 lopping = 1
 # for loop in range(1):
 wloop_counter = 0
+ZP = 25 # INVENTED
+
 while lopping > 0:
     
 
     for epoch in range(1,3):
-        cat = Table.read(folder + f'{zone}/gaia_alignment/Epoch{epoch}/starfinder/{zone}_EP{epoch}_f{band}_drz_sci_stars{band}.txt', format = 'ascii')
-        # ima = fits.open(f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/{zone}/gaia_alignment/Epoch{epoch}/{zone}_EP{epoch}_{band}_drz_sci.fits')
-        ima = fits.open(folder  + f'{zone}/gaia_alignment/Epoch{epoch}/{zone}_EP{epoch}_f{band}_drz_sci.fits')
-        wcs = WCS(ima[0].header)
+        results = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band}/epoch{epoch}/'
+        
+        if red_techn == 'Gaia':
+            cat = Table.read(results + f'{zone}_EP{epoch}_f{band}_drz_sci_stars{band}.txt', format = 'ascii')
+            ima = fits.open(folder  + f'{zone}/gaia_alignment/Epoch{epoch}/{zone}_EP{epoch}_f{band}_drz_sci.fits')
+            wcs = WCS(ima[0].header)
+        if red_techn == 'Original':
+            cat = Table.read(results + f'hst_ep{epoch}_f{band}_drz_stars{band}.txt', format = 'ascii')
+            ima = fits.open(folder  + f'{zone}/gaia_alignment/Epoch{epoch}/hst_ep{epoch}_f{band}_drz.fits')
+            wcs = WCS(ima[1].header)
+        
+        mag = ZP - 2.5 * np.log10(cat['f'])
+        
+        cat['H'] = mag
         
         cat_rd = wcs.pixel_to_world(cat['x'], cat['y'])
         
@@ -159,24 +167,70 @@ while lopping > 0:
         cat['ra'] = cat_rd.ra
         cat['dec'] = cat_rd.dec
         
-        cat['x'] = cat['x']*pixSca # These are arcsec
+        cat['x'] = cat['x']+1 # This +1 is just to make the region file.
+        cat['y'] = cat['y']+1
+        
+        region(cat, 'x', 'y',
+               name = f'{zone}_Ep{epoch}_stars_xy_0.5s',
+               save_in = pruebas,
+               wcs = 'physical',
+               color = 'cyan',
+               marker = 'cross')
+        
+        cat['x'] = cat['x']-1 
+        cat['y'] = cat['y']-1
+        
+        cat['x'] = cat['x']*pixSca*-1 # These are arcsec
         cat['y'] = cat['y']*pixSca
         
         cat['sx'] = cat['sx']*pixSca # These are arcsec
         cat['sy'] = cat['sy']*pixSca
         
+        cat['sxy'] = np.sqrt(cat['sx']**2 + cat['sy']**2)
+        cat = cat[cat['sxy'] > 0]
+        
+        fig, ax = plt.subplots(1,1)
+        ax.set_title(f'Epoch{epoch}')
+        # ax.scatter(cat['H'], np.sqrt(cat['sx']**2 + cat['sy']**2))
+        # ax.hist2d(cat['H'], np.sqrt(cat['sx']**2 + cat['sy']**2), norm = LogNorm(), bins = (50,50))
+        h = ax.hexbin(cat['H'], cat['sxy'], norm = LogNorm())
+        cbar = plt.colorbar(h, ax=ax)
+        ax.set_ylabel('$\sqrt{\sigma{x}^2 + \sigma{y}^2}$ [arcsec]', fontsize = 12)
+        ax.set_xlabel('Mock [H] mag', fontsize = 12)
+        ax.axhline(e_pos_cat, ls = 'dashed', color = 'red')
+        
         mjd = ima[0].header['EXPSTART']   # e.g., 57610.4918468
         obst = Time(mjd, format='mjd', scale='utc')
         # obst_dic[f't{epoch}'] = obst.decimalyear
+        
+        
+        
+        cat = filter_hst_data(cat, max_e_pos = e_pos_cat)
+       
         obst_dic[f't{epoch}'] = obst
-    
         cat_dic[f'cat{epoch}'] = cat
         
-        region(cat, 'ra', 'dec',
-               name = f'{zone}_Ep{epoch}_stars',
-               save_in = pruebas)
-    
-    stop(179)
+        
+        
+        
+        
+        if epoch == 1:
+            region(cat, 'ra', 'dec',
+                   name = f'{zone}_Ep{epoch}_stars',
+                   save_in = pruebas,
+                   marker = 'cross')
+        if epoch == 2:
+            region(cat, 'ra', 'dec',
+                   name = f'{zone}_Ep{epoch}_stars',
+                   save_in = pruebas,
+                   marker = 'circle',
+                   color = 'blue')
+            
+        
+        
+        
+            
+    # stop(179)
     # m_mask1 = (gns1['H'] > m_lim[0]) & (gns1['H'] < m_lim[1])
     # gns1 = gns1[m_mask1]
     
@@ -416,35 +470,37 @@ while lopping > 0:
 #         Does not make much of a difference
 # =============================================================================
         
-        if pre_transf is not None:
-            print(30*'-'+'\n'+f'Applyin a pre transformation of {pre_transf}\n'+ 30*'-')
-            if pre_transf == 'polynomial':
-                psim = ski.transform.estimate_transform(
-                pre_transf, np.array([cat_m['ra'], cat_m['dec']]).T,
-                    np.array([gaia_m['ra'], gaia_m['dec']]).T, order = 1)
+        # if pre_transf is not None:
+        #     print(30*'-'+'\n'+f'Applying {pre_transf} pre-transformation {pre_transf}\n'+ 30*'-')
+            
+        #     if pre_transf == 'polynomial':
+        #         psim = ski.transform.estimate_transform(
+        #         pre_transf, np.array([cat_m['ra'], cat_m['dec']]).T,
+        #             np.array([gaia_m['ra'], gaia_m['dec']]).T, order = 1)
                 
     
-            else:
-                psim = ski.transform.estimate_transform(
-                pre_transf, np.array([cat_m['ra'], cat_m['dec']]).T,
-                    np.array([gaia_m['ra'], gaia_m['dec']]).T)
+        #     else:
+        #         # psim = ski.transform.estimate_transform(
+        #         # pre_transf, np.array([cat_m['ra'], cat_m['dec']]).T,
+        #         #     np.array([gaia_m['ra'], gaia_m['dec']]).T)
             
-            # if pre_transf == 'affine':
-            #     psim = ski.transform.estimate_transform(
-            #     pre_transf, np.array([gns_m['l'], gns_m['b']]).T,
-            #         np.array([gaia_m['l'], gaia_m['b']]).T)
+        #         psim = ski.transform.estimate_transform(
+        #         pre_transf, np.array([cat_m['x'], cat_m['y']]).T,
+        #             np.array([gaia_m['x'], gaia_m['y']]).T)
+            
+           
             
             
-            cat_sim = psim(np.array([hst_cat['ra'], hst_cat['dec']]).T)
-            hst_cat['ra'] = cat_sim[:, 0]*u.deg
-            hst_cat['dec'] = cat_sim[:, 1]*u.deg
+        #     cat_sim = psim(np.array([hst_cat['ra'], hst_cat['dec']]).T)
+        #     hst_cat['ra'] = cat_sim[:, 0]*u.deg
+        #     hst_cat['dec'] = cat_sim[:, 1]*u.deg
 
 
 
         gaia_c = SkyCoord(ra = gaia[f'ra{cats["tag"]}'], dec = gaia[f'dec{cats["tag"]}'], frame='icrs')
-        gns_c = SkyCoord(ra = hst_cat['ra'], dec = hst_cat['dec'], frame='icrs')
+        hst_c = SkyCoord(ra = hst_cat['ra'], dec = hst_cat['dec'], frame='icrs')
         
-        idx1, idx2, sep2d, _ = search_around_sky(gaia_c, gns_c, max_sep)
+        idx1, idx2, sep2d, _ = search_around_sky(gaia_c, hst_c, max_sep)
 
         count1 = Counter(idx1)
         count2 = Counter(idx2)
@@ -471,6 +527,7 @@ while lopping > 0:
         print(len(cat_m),len(unicos))
         print(40*'+')
         
+        
 # %%
         
 
@@ -495,7 +552,7 @@ while lopping > 0:
             fig_pre, (ax_pre, ax1_pre) = plt.subplots(1,2,figsize = (11,5.5))
             #
             ax_pre.set_title(f'Gaia vs HST{c+1} (Stars = {len(gaia_m)})')
-            ax1_pre.set_title(f'Residuas before any transformation')
+            ax1_pre.set_title('Residuas before any transformation')
             # ax1.set_title(f'Matching stars  = {len(d_xm)}')
             ax_pre.set_ylabel('# stars')
             ax_pre.hist(dl_pre, bins = 10,  color = 'grey', alpha = 0.5)
@@ -521,15 +578,21 @@ while lopping > 0:
         
 # %%
         
-
+        
         # Fit transform
         if transf == 'polynomial':
+            print('**********************')
+            print(f'Applying {transf}')
+            print('**********************')
             p = ski.transform.estimate_transform(
                 transf, np.array([cat_m['x'], cat_m['y']]).T,
                 np.array([gaia_m['x'], gaia_m['y']]).T, order=order_trans
             )
             
         else:
+            print('**********************')
+            print(f'Applying {transf}')
+            print('**********************')
             p = ski.transform.estimate_transform(
                 transf, np.array([cat_m['x'], cat_m['y']]).T,
                 np.array([gaia_m['x'], gaia_m['y']]).T
@@ -542,6 +605,8 @@ while lopping > 0:
         hst_cat['x'] = cat_trans[:, 0]
         hst_cat['y'] = cat_trans[:, 1]
         print(p.params)
+        
+        
         
         cat_xy = np.array([hst_cat['x'],hst_cat['y']]).T
         gaia_xy = np.array([gaia['x'],gaia['y']]).T
@@ -730,6 +795,9 @@ while lopping > 0:
     cat1.meta['e_pm_gaia'] = e_pm_gaia
     # cat1.meta['mag_min_gaia'] = mag_min_gaia
     
+    cat1 = filter_hst_data(cat1, max_e_pm = e_pm_cat)
+    cat2 = filter_hst_data(cat2, max_e_pm = e_pm_cat)
+    
 # =============================================================================
 #     Save the catlogs with the pm
 # =============================================================================
@@ -743,9 +811,8 @@ while lopping > 0:
     # gns2.meta['f_mode'] = f_mode
 
 
-    # stop()
-    cat1 = filter_hst_data(cat1, max_e_pm = e_pm_cat)
-    cat2 = filter_hst_data(cat2, max_e_pm = e_pm_cat)
+    
+   
 
     # 
     # %%
@@ -754,6 +821,7 @@ while lopping > 0:
     
     bins = 30
     ax.set_title(f'{zone}, f{band}')
+    ax2.set_title(f'Red. Tec: {red_techn}')
     ax.hist(pm_x, bins = bins, color = 'grey', alpha = 0.3)
     ax2.hist(pm_y, bins = bins, color = 'grey', alpha = 0.3)
     
@@ -773,7 +841,9 @@ while lopping > 0:
     fig.tight_layout()
     plt.show()
     
+# %%
     
+
     g_fac = 1# make the min distance 3 times bigger when comrin with Gaia
     
     cat1_xy = np.array([cat1['x'], cat1['y']]).T
@@ -931,7 +1001,16 @@ while lopping > 0:
     plt.show()  
     
         
- 
+    dH_cat = cat1['H'] - cat2['H']
+    fig, ax = plt.subplots(1,1,figsize = (7,7))
+    ax.axhline(np.mean(dH_cat), color = 'tab:orange', label = f'$\Delta H$ = {np.mean(dH_cat): .2f} ')
+    ax.axhline(np.mean(dH_cat) + np.std(dH_cat), ls = 'dashed' ,color = 'r', label = f'$\pm\sigma$ = {np.std(dH_cat): .2f} ')
+    ax.axhline(np.mean(dH_cat) - np.std(dH_cat), ls = 'dashed' ,color = 'r')
+    h = ax.hexbin(cat1['H'] , dH_cat, norm = LogNorm())
+    cbar = plt.colorbar(h, ax=ax)
+    ax.legend()
+    ax.set_ylabel('$\Delta H$', fontsize = 12)
+    ax.set_xlabel('Mock [H] mag', fontsize = 12)
    
     # %%
     rcParams.update({
@@ -944,7 +1023,7 @@ while lopping > 0:
 })
     fig, (ax, ax2) = plt.subplots(1, 2, figsize=(10, 5))
     
-    ax2.set_title(f'# Gaia = {len(dpm_x)} ')
+    ax2.set_title(f'Red. Tec: {red_techn}# Gaia = {len(dpm_x)} ')
     ax.set_title(f'{zone}, f{band}')
     ax.hist(dpm_x, histtype='step', bins='auto', lw=2,
             label='$\overline{\Delta \mu_{RA}}$ = %.2f'
@@ -968,7 +1047,7 @@ while lopping > 0:
 
     meta = {'Script': '/Users/amartinez/Desktop/PhD/HAWK/GNS_pm_scripts/GNS_pm_absolute_SUPER/gns_gaia_alignment.py'}
     # plt.savefig(f'/Users/amartinez/Desktop/PhD/My_papers/GNS_pm_catalog/images/ABS_F1_{field_one}_gaia_resi_pm.png', dpi = 150, transparent = True, metadata = meta)
-
+    
 
         
     # %%
@@ -996,7 +1075,7 @@ while lopping > 0:
     wloop_counter += 1
     
 # %%
-
+region(cat, 'ra', 'dec', name ='')
 
 region_vectors(
     table=cat1[cat1_ga['ind_1']],
@@ -1024,58 +1103,34 @@ region_vectors(
     scale=1,
     width = 5
 )
+# %%
 
-
-
-
-# values = [len(gns1_ga),
-#       np.mean(dpm_x), np.std(dpm_x),
-#       np.mean(dpm_y), np.std(dpm_y)]
-
-# filepath = pruebas1 + 'alignment_stimation.txt'
-
-# # Check if file already exists
-# file_exists = os.path.isfile(filepath)
-
-# # Open in append mode
-# with open(filepath, 'a') as f:
-#     # If file didn't exist, write header
-#     if not file_exists:
-#         header = "num_gaia mean_dpm_x std_dpm_x mean_dpm_y std_dpm_y\n"
-#         f.write(header)
-
-#     # Write the new line
-#     line = " ".join(map(str, values)) + "\n"
-#     f.write(line)
-# # %%
-
-
-# # %%
-# if look_for_cluster == 'yes':
+if look_for_cluster == 'yes':
     
    
-#     # modes = ['pm_xy_color']
-#     modes = ['pm_xy']
-#     knn = 20
-#     gen_sim = 'kernnel'
-#     sim_lim ='minimun'
-#     # sim_lim ='mean'
+    # modes = ['pm_xy_color']
+    modes = ['pm_xy']
+    knn = 20
+    gen_sim = 'kernnel'
+    # sim_lim ='minimun'
+    sim_lim ='mean'
 
-# # clus_dic = gns_cluster_finder.finder(gns1['pm_xp'], gns1['pm_yp'],
-# #                              # gns1['xp'], gns1['yp'], 
-# #                              gns1['xp'], gns1['yp'], 
-# #                              gns1['l'].value, gns1['b'].value,
-# #                              modes[0],
-# #                              gns1['H'],gns1['H'],
-# #                              knn,gen_sim,sim_lim, save_reg = pruebas1)
+    clus_dic = cluster_finder.finder(cat1, 'pm_x', 'pm_y',
+                                 'x', 'y', 
+                                 'ra', 'dec',
+                                 modes[0],
+                                 'H','H',
+                                 knn,gen_sim,sim_lim, save_reg = None)
+   
+#     elif destination == 1:
+#         clus_dic = gns_cluster_finder.finder(gns1_mpm['pm_x'], gns1_mpm['pm_y'],
+#                                      gns1_mpm['xp'], gns1_mpm['yp'], 
+#                                      gns1_mpm['l'].value, gns1_mpm['b'].value,
+#                                      modes[0],
+#                                      gns1_mpm['H'],gns1_mpm['H'],
+#                                      knn,gen_sim,sim_lim, save_reg = pruebas1)
+# # %%
 
-#     clus_dic = gns_cluster_finder.finder(gns2['pm_xp'], gns2['pm_yp'],
-#                                  # gns1['xp'], gns1['yp'], 
-#                                  gns2['xp'], gns2['yp'], 
-#                                  gns2['l'].value, gns2['b'].value,
-#                                  modes[0],
-#                                  gns2['H'],gns2['H'],
-#                                  knn,gen_sim,sim_lim, save_reg = pruebas1)
 
 
 

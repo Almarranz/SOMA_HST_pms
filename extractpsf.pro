@@ -1,26 +1,31 @@
-PRO EXTRACTPSF
+PRO EXTRACTPSF, zone, filter, epoch
 
 ; tmpdir = '../tmp/'
-tmpdir = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/pruebas/tmp/'
-dir = './'
+; tmpdir = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/pruebas/tmp/'
+; dir = './'
+
+; zone = 'G028.20-00.05'
+; filter = '160w'
+; epoch = '1'
+
+path = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/'+ zone +'/gaia_alignment/Epoch'+ epoch +'/'
+pruebas = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/pruebas/'
+tmpdir = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/'+ zone +'/f'+ filter +'/epoch'+ epoch +'/tmp/'
+results = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/'+ zone +'/f'+ filter +'/epoch'+ epoch +'/'
+
 
 ZP = 25.0 ; random ZP
-maskrad = 41
+maskrad = 21
 nrad = 4
 ; path = '/Users/fedriani/Documents/postdoc_iaa/HST_project/HST_data/G028.20-00.05/gaia_alignment/Epoch1/starfinder/'
-path = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/G028.20-00.05/gaia_alignment/Epoch1/'
-results = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/G028.20-00.05/f160w/epoch1/'
-pruebas = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/pruebas/'
+; path = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/G028.20-00.05/gaia_alignment/Epoch1/'
+; results = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/G028.20-00.05/f160w/epoch1/'
+; pruebas = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/pruebas/'
 
-;nam = '../G028.20-00.05_EP1_f110w_drz_sci'
-;filter = '110w'
-;nam = '../G028.20-00.05_EP1_f128n_drz_sci'
-;filter = '128n'
-nam = 'G028.20-00.05_EP1_f160w_drz_sci'
-filter = '160w'
-; nam = '../G028.20-00.05_EP1_f164n_drz_sci'
-; filter = '164n'
 
+; nam = zone +'_EP'+ epoch + '_f'+ filter + '_drz_sci'
+
+nam = 'hst_ep'+ epoch + '_f'+ filter + '_drz'
 ; create tmp directory if necessary
 ; if not(FILE_TEST(path + 'tmp')) then FILE_MKDIR, path + 'tmp'
 if not(FILE_TEST(pruebas + 'tmp')) then FILE_MKDIR, pruebas + 'tmp'
@@ -41,7 +46,7 @@ unweighted = 1 ; If 1, then use unweighted median of the stars that are selected
 ; ------------------------------------------------
 
 correl_mag = 4.0 ; as far as I remember this parameter is not very important
-deblend = 0      ; deblend close stars?
+deblend = 0     ; deblend close stars?
 deblost = 0      ; try to deblend stars that appear to deviate from PSF shape (i.e. they appear to be merged)
 niter = 2        ; 2 iterations are standard
 rel_thresh = 1   ; use relative threshold for source detection (i.e. sigmas) 
@@ -50,7 +55,8 @@ guide_y = ""     ; completely irrelevant, but necessary for our StarFinder versi
 back_box = maskrad           ; radius for estimation of background 
 psf_size = 2*maskrad+1
 
-  im = readfits(path + nam + '.fits',header,EXT=0) ;careful here! check the extension!
+;   im = readfits(path + nam + '.fits',header,EXT=0) ;careful here! check the extension!
+  im = readfits(path + nam + '.fits',header,EXT=1) ;careful here! check the extension!
   good = where(FINITE(im),complement=isnan)
   im[isnan] = 0
   noise = sqrt(im)
@@ -70,7 +76,7 @@ psf_size = 2*maskrad+1
   threshold = 100. * median(noise[where(noise gt 0)])
   background = estimate_background(im,back_box)
   search_objects, im, LOW_SURFACE = background, threshold, $
-                  PRE_SMOOTH = 0, MINIF = 1, $ ;THIS WAS CHANGED PRE_SMOOTH AND MINIF. DEFAULTS WERE 1 AND 2.
+                  PRE_SMOOTH = 1, MINIF = 2, $ ;THIS WAS CHANGED PRE_SMOOTH AND MINIF. DEFAULTS WERE 1 AND 2.
                   n, x, y, f
   good = where(f gt 0,n)
   x_psf = x[good]
@@ -82,8 +88,9 @@ psf_size = 2*maskrad+1
   mindist = 10 ; THIS WAS 2, BUT WORKS AT 30. WORKED AT 10 FOR G28
  ; Use Gaussian PSF
   psf = psf_gaussian(NPIXEL=psf_size,FWHM=psf_fwhm,/NORMALIZE,/DOUBLE)
-  threshold = 100.0
+  threshold = 10
   PSFMAKER, x_psf, y_psf, x, y, f, im, noise, nrad, FOVMASK = fov_mask, PSF=psf,  BACKGROUND=background, DEBUG = debug, ITER = iter, MINDIST = mindist, NOISE_PSF = psf_sigma, MASKRAD = maskrad, UNWEIGHTED=unweighted, TMPDIR = tmpdir, LOCAL_SKY=local_sky, USE_CENTROID=use_centroid, oversamp = oversamp;, THRESHOLD=threshold
+;   PSFMAKER, x_psf, y_psf, x, y, f, im, noise, nrad, FOVMASK = fov_mask, PSF=psf,  BACKGROUND=background, DEBUG = debug, ITER = iter, MINDIST = mindist, NOISE_PSF = psf_sigma, MASKRAD = maskrad, UNWEIGHTED=unweighted, TMPDIR = tmpdir, LOCAL_SKY=local_sky, USE_CENTROID=use_centroid, oversamp = oversamp, THRESHOLD=threshold
 
  
   mmm, psf, skymod, skysigma , skyskew
@@ -97,7 +104,7 @@ psf_size = 2*maskrad+1
   ; Run StarFinder and iterate search for PSF reference stars and PSF extraction
   ; --------------------------------------------------------------------------
 
-  Threshold = [5., 5.] ;THIS WAS 1, WORKS WITH 5.
+  Threshold = [5, 5] ;THIS WAS 1, WORKS WITH 5.
   estim_bg = 1
   starfinder, im, psf, X_BAD=x_bad, Y_BAD = y_bad, $
         BACKGROUND = background, BACK_BOX = back_box, $
@@ -110,18 +117,30 @@ psf_size = 2*maskrad+1
         SV_SIGMA_R = 0.0085, SV_SIGMA_A= 0.0050, $
         x, y, f, sx, sy, sf, c, STARS = stars, $
         LOGFILE = logfilename, /CUBIC;, /NO_SLANT
-    writefits, tmpdir + 'stars.fits.gz', stars
-    writefits, tmpdir + 'bg.fits.gz', background
-
+    writefits, tmpdir + 'stars.fits', stars
+    writefits, tmpdir + 'bg.fits', background
+    
+    sat_th = 15000
+    
+    unsat = WHERE(f lt sat_th, n_unsat)
+    IF n_unsat GT 0 THEN BEGIN
+        x = x[unsat]
+        y = y[unsat]
+        f = f[unsat]
+    ENDIF
+;     
     ; save stars for use in PSFMAKER
     x_stars = x
     y_stars = y
     f_stars = f
     
+  
+  
+    
  ; 2) PSF extraction
  ; ---------------------
 
-  mag = ZP -2.5 * alog10(f)
+  mag = ZP - 2.5 * alog10(f)
   ord = sort(mag)
   mag = mag[ord]
   x = x[ord]
@@ -141,12 +160,12 @@ psf_size = 2*maskrad+1
   f = f[ord]
   n_iso = n_elements(ind_iso)
   print, 'Found ' + strn(n_iso) + ' isolated stars.'
-
+  
   ; Avoid masked sources or sources near edges
   ; Valid reference sources
   ; are those sources that are contained
   ; in field of view (at least to psf_frac part)
-  psf_frac = 0.9
+  psf_frac = 0.7
   boxhw = psf_size/2
   dummy = replicate(1,psf_size,psf_size)
   dummy = circ_mask(dummy,boxhw,boxhw,maskrad)
@@ -175,8 +194,10 @@ psf_size = 2*maskrad+1
 ; crowded fields)
 ; -------------------------------------------------------------
   refim = image_model(x_psf,y_psf,f_psf,n1,n2,psf)
-  writefits, tmpdir + 'psfstars.fits.gz', refim
-
+  writefits, tmpdir + 'psfstars.fits', refim
+  print,'*******************'
+  print, 'n_elements(x_psf)', n_elements(x_psf)
+  
    iter = 1
    oversamp = 1
    use_centroid = 0
@@ -196,8 +217,8 @@ psf_size = 2*maskrad+1
 ;   writefits, path + 'psf_'+filter+'.fits', psf
 ;   writefits, path + 'psf_sigma'+filter+'.fits', psf_noise/total(psf)
   
-  writefits, pruebas + 'psf_'+filter+'.fits', psf
-  writefits, pruebas + 'psf_sigma'+filter+'.fits', psf_noise/total(psf)
+  writefits, tmpdir + 'psf_'+filter+'.fits', psf
+  writefits, tmpdir + 'psf_sigma'+filter+'.fits', psf_noise/total(psf)
   
   print, 'FINITO'
   
