@@ -20,3 +20,18 @@ First, we run *Starfinder* over the "drizzeled" images. (Drizzeled images have b
         > xtstarfinder 
 
     Manual for *Starfinder* widget : `/Users/amartinez/Desktop/PhD/StarFinder/starfinder_manual.pdf`
+
+2. `astrophot.pro`
+    Generate the stars lists.
+
+         idl -e \"astrophot, '<zone>', '<band>', '<epoch>'\
+
+3. `hst_photometry.py``
+    Calibrate the images. 
+    > WORK in PROGRESS
+
+## Astrometry
+
+We align the stars list witn the *Gaia* stars. By default we a use a degree 2 polynomial.
+
+4. `hst_gaia_alignment.py`
