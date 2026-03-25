@@ -27,12 +27,11 @@ First, we run *Starfinder* over the "drizzeled" images. (Drizzeled images have b
 
          idl -e \"astrophot, '<zone>', '<band>', '<epoch>'\
 
-4. `hst_photometry.py` 
-    Calibrate the images. 
-    > WORK in PROGRESS
 
 ## Astrometry
 
 We align the stars list witn the *Gaia* stars. By default we a use a degree 2 polynomial.
 
 4. `hst_gaia_alignment.py`
+
+   >  `hst_photometry.py` I intruced the ZP calculation and calibration inside the alignment script. 
