@@ -1,0 +1,90 @@
+# -----------------------------
+# PYTHON
+# -----------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.so
+*.dll
+
+# Ignore Python virtual environments
+venv/
+env/
+.spyder-env/
+.ipynb_checkpoints/
+
+# -----------------------------
+# EDITORS AND IDEs
+# -----------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# -----------------------------
+# LOGS & TEMP FILES
+# -----------------------------
+*.log
+*.tmp
+*.temp
+
+# -----------------------------
+# MAC SYSTEM FILES
+# -----------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# -----------------------------
+# DATA FILES (TO PREVENT ACCIDENTAL HUGE COMMITS)
+# -----------------------------
+*.fits
+*.fit
+*.tar
+*.tar.gz
+*.gz
+*.zip
+*.7z
+
+# If you have specific big-data folders:
+data/
+datasets/
+bigfiles/
+
+# -----------------------------
+# NUMPY / SCIENTIFIC FILES
+# -----------------------------
+*.npy
+*.npz
+
+# -----------------------------
+# TEXT FILES — optional
+# If you don't want to ever commit large .txt dumps:
+# -----------------------------
+#*.txt
+
+# -----------------------------
+# IMAGES, FIGURES, AND OUTPUTS
+# -----------------------------
+*.png
+*.jpg
+*.jpeg
+*.tif
+*.tiff
+*.pdf
+
+# -----------------------------
+# ASTROPY / ASTRONOMY RELATED
+# -----------------------------
+*.reg      # DS9 region files
+*.tbl      # Astro tables
+*.fits.fz
+*.cat
+
+# -----------------------------
+# JUPYTER NOTEBOOK OUTPUT
+# -----------------------------
+*.nbconvert/
+*/.ipynb_checkpoints/
