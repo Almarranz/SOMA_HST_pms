@@ -50,25 +50,26 @@ from ds9_region import region_vectors
 from ds9_region import region
 from matplotlib.colors import LogNorm
 import cluster_finder
+from hst_irZP import get_vegazp
 # %%plotting parametres
 from matplotlib import rc
 from matplotlib import rcParams
 
-plt.rcParams["mathtext.fontset"] = 'dejavuserif'
-rc('font',**{'family':'serif','serif':['Palatino']})
-plt.rcParams.update({'figure.max_open_warning': 0})# a warniing for matplot lib pop up because so many plots, this turining it of
-# Enable automatic plotting mode
+# plt.rcParams["mathtext.fontset"] = 'dejavuserif'
+# rc('font',**{'family':'serif','serif':['Palatino']})
+# plt.rcParams.update({'figure.max_open_warning': 0})# a warniing for matplot lib pop up because so many plots, this turining it of
+# # Enable automatic plotting mode
 # IPython.get_ipython().run_line_magic('matplotlib', 'auto')
-IPython.get_ipython().run_line_magic('matplotlib', 'inline')
+# # IPython.get_ipython().run_line_magic('matplotlib', 'inline')
 
 
 folder = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/'
 # results = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band}/epoch{epoch}/'
 # results = ''
-zone = 'G032.03+00.05'
-# zone = 'G028.20-00.05'
-band = '160w'
-# band = '128n'
+# zone = 'G032.03+00.05'
+zone = 'G028.20-00.05'
+# band = '160w'
+band = '128n'
 # epoch = 2
 
 pruebas = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/pruebas/'
@@ -121,7 +122,7 @@ e_pm_cat = 20# im mas/yr
 # =============================================================================
 # CLUSTERS
 # =============================================================================
-look_for_cluster = 'yes'
+look_for_cluster = 'no'
 
 
 # =============================================================================
@@ -137,7 +138,7 @@ bad = []
 lopping = 1
 # for loop in range(1):
 wloop_counter = 0
-ZP = 25 # INVENTED
+# ZP = 25 # INVENTED
 
 while lopping > 0:
     
@@ -149,14 +150,29 @@ while lopping > 0:
             cat = Table.read(results + f'{zone}_EP{epoch}_f{band}_drz_sci_stars{band}.txt', format = 'ascii')
             ima = fits.open(folder  + f'{zone}/gaia_alignment/Epoch{epoch}/{zone}_EP{epoch}_f{band}_drz_sci.fits')
             wcs = WCS(ima[0].header)
+            scale_pix = np.sqrt(ima[0].header['CD1_1']**2 + ima[0].header['CD2_1']**2 )*3600
+            
         if red_techn == 'Original':
             cat = Table.read(results + f'hst_ep{epoch}_f{band}_drz_stars{band}.txt', format = 'ascii')
             ima = fits.open(folder  + f'{zone}/gaia_alignment/Epoch{epoch}/hst_ep{epoch}_f{band}_drz.fits')
             wcs = WCS(ima[1].header)
+            scale_pix = np.sqrt(ima[1].header['CD1_1']**2 + ima[1].header['CD2_1']**2 )*3600
         
-        mag = ZP - 2.5 * np.log10(cat['f'])
+        print(pixSca, scale_pix)
+# =============================================================================
+#         ZP calculation
+# =============================================================================
+        mjd = ima[0].header['EXPSTART']
+        ZP = get_vegazp(mjd, band = f'f{band}')
+        print(ZP)
+    
+    
+        cat['H'] =  (-2.5*np.log10(cat['f']) + ZP).round(4)
+        cat['dH'] = ((2.5 / np.log(10)) * (cat['sf'] / cat['f'])).round(4)
         
-        cat['H'] = mag
+        cat.write(results + f'calib_{zone}_EP{epoch}_f{band}_drz_sci_stars{band}.txt', format = 'ascii', overwrite = True )
+        
+
         
         cat_rd = wcs.pixel_to_world(cat['x'], cat['y'])
         
@@ -189,22 +205,26 @@ while lopping > 0:
         cat['sxy'] = np.sqrt(cat['sx']**2 + cat['sy']**2)
         cat = cat[cat['sxy'] > 0]
         
-        fig, ax = plt.subplots(1,1)
+        fig, (ax, ax2) = plt.subplots(1,2, figsize = (12,6))
+        ax2.set_title(f'ZP = {ZP: .3f}')
         ax.set_title(f'Epoch{epoch}')
-        # ax.scatter(cat['H'], np.sqrt(cat['sx']**2 + cat['sy']**2))
-        # ax.hist2d(cat['H'], np.sqrt(cat['sx']**2 + cat['sy']**2), norm = LogNorm(), bins = (50,50))
         h = ax.hexbin(cat['H'], cat['sxy'], norm = LogNorm())
         cbar = plt.colorbar(h, ax=ax)
         ax.set_ylabel('$\sqrt{\sigma{x}^2 + \sigma{y}^2}$ [arcsec]', fontsize = 12)
-        ax.set_xlabel('Mock [H] mag', fontsize = 12)
+        ax.set_xlabel('[H]', fontsize = 12)
         ax.axhline(e_pos_cat, ls = 'dashed', color = 'red')
         
+        h2 = ax2.hexbin(cat['H'], cat['dH'], norm = LogNorm(), cmap = 'inferno')
+        cbar = plt.colorbar(h2, ax=ax2)
+        ax2.set_ylabel('[dH]', fontsize = 12)
+        ax2.set_xlabel('[H]', fontsize = 12)
+        # ax2.axhline(e_pos_cat, ls = 'dashed', color = 'red')
+        fig.tight_layout()
         mjd = ima[0].header['EXPSTART']   # e.g., 57610.4918468
         obst = Time(mjd, format='mjd', scale='utc')
-        # obst_dic[f't{epoch}'] = obst.decimalyear
+        obst_dic[f'tyr{epoch}'] = obst.decimalyear
         
-        
-        
+
         cat = filter_hst_data(cat, max_e_pos = e_pos_cat)
        
         obst_dic[f't{epoch}'] = obst
