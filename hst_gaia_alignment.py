@@ -68,8 +68,8 @@ folder = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability
 # results = ''
 # zone = 'G032.03+00.05'
 zone = 'G028.20-00.05'
-# band = '160w'
-band = '128n'
+band = '160w'
+# band = '128n'
 # epoch = 2
 
 pruebas = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/pruebas/'
@@ -123,7 +123,7 @@ e_pm_cat = 20# im mas/yr
 # CLUSTERS
 # =============================================================================
 look_for_cluster = 'no'
-
+# look_for_cluster = 'yes'
 
 # =============================================================================
 # Dictionaries
@@ -1030,7 +1030,7 @@ while lopping > 0:
     cbar = plt.colorbar(h, ax=ax)
     ax.legend()
     ax.set_ylabel('$\Delta H$', fontsize = 12)
-    ax.set_xlabel('Mock [H] mag', fontsize = 12)
+    ax.set_xlabel('[H]', fontsize = 12)
    
     # %%
     rcParams.update({
