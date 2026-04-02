@@ -16,8 +16,8 @@ First, we run *Starfinder* over the "drizzeled" images. (Drizzeled images have b
 
     
 
-        idl 87
-        > xtstarfinder 
+            idl 87
+            > xtstarfinder 
 
     Manual for *Starfinder* widget : `/Users/amartinez/Desktop/PhD/StarFinder/starfinder_manual.pdf`
 
