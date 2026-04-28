@@ -10,7 +10,7 @@ First, we run *Starfinder* over the "drizzeled" images. (Drizzeled images have b
     Extract the psf.
 
  
-        idl -e \"extractpsf, '<zone>', '<band>', '<epoch>'\
+        idl -e "extractpsf, '<zone>', '<band>', '<epoch>'"
 
     > This script generate the psf automatically, and seems to work correctly. However, there is the possiboity to use *Starfinde* widget to do so. Just open a terminal al type: ``idl 87``
         and then ``> xtstarfinder``. Find the *Starfinder widget manual* in `/Users/amartinez/Desktop/PhD/StarFinder/starfinder_manual.pdf`
@@ -19,7 +19,7 @@ First, we run *Starfinder* over the "drizzeled" images. (Drizzeled images have b
    
     Generate the stars lists.
 
-         idl -e \"astrophot, '<zone>', '<band>', '<epoch>'\
+         idl -e "astrophot, '<zone>', '<band>', '<epoch>'"
 
 
 ## Astrometry
