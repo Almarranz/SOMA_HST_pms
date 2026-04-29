@@ -5,6 +5,7 @@ The scripts are located in `/Users/amartinez/Desktop/Projects/SOMA_HST_pm/script
 ## Photometry
 
 First, we run *Starfinder* over the "drizzeled" images. (Drizzeled images have been corrected from distortions, cosmic rays etc)
+> The version with the `_noAlig.pro` subfix are for the HST drizzeld imagaes that *ARE NOT ALIGN WITH GAIA*. The works in the same way but they produces star lists with different names.
 
 1. `extractpsf.pro` 
     Extract the psf.
