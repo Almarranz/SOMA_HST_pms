@@ -51,6 +51,7 @@ from ds9_region import region
 from matplotlib.colors import LogNorm
 import cluster_finder
 from hst_irZP import get_vegazp
+from glob import glob
 # %%plotting parametres
 from matplotlib import rc
 from matplotlib import rcParams
@@ -63,11 +64,12 @@ from matplotlib import rcParams
 # # IPython.get_ipython().run_line_magic('matplotlib', 'inline')
 
 
+# folder = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/'
 folder = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/'
 # results = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band}/epoch{epoch}/'
 # results = ''
-# zone = 'G032.03+00.05'
-zone = 'G028.20-00.05'
+zone = 'G032.03+00.05'
+# zone = 'G028.20-00.05'
 band = '160w'
 # band = '128n'
 # epoch = 2
@@ -122,8 +124,8 @@ e_pm_cat = 20# im mas/yr
 # =============================================================================
 # CLUSTERS
 # =============================================================================
-look_for_cluster = 'no'
-# look_for_cluster = 'yes'
+# look_for_cluster = 'no'
+look_for_cluster = 'yes'
 
 # =============================================================================
 # Dictionaries
@@ -144,21 +146,27 @@ while lopping > 0:
     
 
     for epoch in range(1,3):
-        results = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band}/epoch{epoch}/'
         
         if red_techn == 'Gaia':
+            results = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band}/epoch{epoch}/'
             cat = Table.read(results + f'{zone}_EP{epoch}_f{band}_drz_sci_stars{band}.txt', format = 'ascii')
             ima = fits.open(folder  + f'{zone}/gaia_alignment/Epoch{epoch}/{zone}_EP{epoch}_f{band}_drz_sci.fits')
             wcs = WCS(ima[0].header)
             scale_pix = np.sqrt(ima[0].header['CD1_1']**2 + ima[0].header['CD2_1']**2 )*3600
             
         if red_techn == 'Original':
-            cat = Table.read(results + f'hst_ep{epoch}_f{band}_drz_stars{band}.txt', format = 'ascii')
-            ima = fits.open(folder  + f'{zone}/gaia_alignment/Epoch{epoch}/hst_ep{epoch}_f{band}_drz.fits')
+            results = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band}_noAlig/epoch{epoch}/'
+            cat = Table.read(results + f'hst_{zone}_epoch{epoch}_stars_f{band}.txt', format = 'ascii')
+            pattern = folder + f"{zone}/epoch{epoch}/hst_*f{band}*"
+            
+            ima_name = os.path.basename(glob(pattern)[0])
+            ima = fits.open(glob(pattern)[0] + f'/{ima_name}_drz.fits')
             wcs = WCS(ima[1].header)
             scale_pix = np.sqrt(ima[1].header['CD1_1']**2 + ima[1].header['CD2_1']**2 )*3600
         
         print(pixSca, scale_pix)
+        
+        # stop(168)
 # =============================================================================
 #         ZP calculation
 # =============================================================================
@@ -1122,6 +1130,21 @@ region_vectors(
     wcs='fk5',
     scale=1,
     width = 5
+)
+# %%
+
+
+region_vectors(
+    table=cat1,
+    ra_col='ra',
+    dec_col='dec',
+    pmra_col='pm_x',
+    pmdec_col='pm_y',
+    name=f'{zone}_{band}_f{band}_vec_all',
+    save_in = pruebas,
+    color='cyan',
+    wcs='fk5',
+    scale=1
 )
 # %%
 

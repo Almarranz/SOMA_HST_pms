@@ -1,31 +1,37 @@
-PRO EXTRACTPSF, zone, filter, epoch
+PRO EXTRACTPSF_noAlig, zone, filter, epoch
 
-; tmpdir = '../tmp/'
-; tmpdir = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/pruebas/tmp/'
-; dir = './'
 
 zone = 'G028.20-00.05'
 filter = '160w'
 epoch = '1'
 
-path = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/'+ zone +'/gaia_alignment/Epoch'+ epoch +'/'
+
+; base = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/G028.20-00.05/epoch1/'
+base = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/'+ zone +'/epoch'+ epoch +'/'
+
+
+
+
+pattern = base + 'hst_*' + filter + '*'
+paths = FILE_SEARCH(pattern, /TEST_DIRECTORY)
+path = paths + '/'
+
 pruebas = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/pruebas/'
-tmpdir = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/'+ zone +'/f'+ filter +'/epoch'+ epoch +'/tmp/'
-results = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/'+ zone +'/f'+ filter +'/epoch'+ epoch +'/'
+tmpdir = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/'+ zone +'/f'+ filter +'_noAlig/epoch'+ epoch +'/tmp/'
+results = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/'+ zone +'/f'+ filter +'_noAlig/epoch'+ epoch +'/'
 
 
 ZP = 25.0 ; random ZP
-maskrad = 21
+maskrad = 41
 nrad = 4
-; path = '/Users/fedriani/Documents/postdoc_iaa/HST_project/HST_data/G028.20-00.05/gaia_alignment/Epoch1/starfinder/'
-; path = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/G028.20-00.05/gaia_alignment/Epoch1/'
-; results = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/G028.20-00.05/f160w/epoch1/'
-; pruebas = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/pruebas/'
 
 
-; nam = zone +'_EP'+ epoch + '_f'+ filter + '_drz_sci'
 
-nam = 'hst_ep'+ epoch + '_f'+ filter + '_drz'
+
+nam = FILE_BASENAME(path) + '_drz
+print, path
+print, nam
+; nam = 'hst_ep'+ epoch + '_f'+ filter + '_drz'
 ; create tmp directory if necessary
 ; if not(FILE_TEST(path + 'tmp')) then FILE_MKDIR, path + 'tmp'
 if not(FILE_TEST(pruebas + 'tmp')) then FILE_MKDIR, pruebas + 'tmp'
@@ -35,12 +41,12 @@ if not(FILE_TEST(pruebas + 'tmp')) then FILE_MKDIR, pruebas + 'tmp'
 ; reference stars
 delta_mag = 5.
 delta_r = 10
-nref_max = 21 ; max number of PSF reference stars: result not significantly sensitive to this parameter
+nref_max = 50 ; max number of PSF reference stars: result not significantly sensitive to this parameter
 
 ; Parameters that need to be edited frequently
 min_correlation = 0.7 ; high correlation threshold is importante to avoid detecting saturated or corrupted sources
 psf_fwhm = 2.0 ; very approximate value
-unweighted = 1 ; If 1, then use unweighted median of the stars that are selected to represent the PSF
+unweighted = 0 ; If 1, then use unweighted median of the stars that are selected to represent the PSF
 
 ; Parameters for PSF estimation and StarFinder
 ; ------------------------------------------------
@@ -76,7 +82,7 @@ psf_size = 2*maskrad+1
   threshold = 100. * median(noise[where(noise gt 0)])
   background = estimate_background(im,back_box)
   search_objects, im, LOW_SURFACE = background, threshold, $
-                  PRE_SMOOTH = 1, MINIF = 2, $ ;THIS WAS CHANGED PRE_SMOOTH AND MINIF. DEFAULTS WERE 1 AND 2.
+                  PRE_SMOOTH = 1, MINIF = 2 , $ ;THIS WAS CHANGED PRE_SMOOTH AND MINIF. DEFAULTS WERE 1 AND 2.
                   n, x, y, f
   good = where(f gt 0,n)
   x_psf = x[good]
@@ -88,7 +94,7 @@ psf_size = 2*maskrad+1
   mindist = 10 ; THIS WAS 2, BUT WORKS AT 30. WORKED AT 10 FOR G28
  ; Use Gaussian PSF
   psf = psf_gaussian(NPIXEL=psf_size,FWHM=psf_fwhm,/NORMALIZE,/DOUBLE)
-  threshold = 10
+  threshold = 100
   PSFMAKER, x_psf, y_psf, x, y, f, im, noise, nrad, FOVMASK = fov_mask, PSF=psf,  BACKGROUND=background, DEBUG = debug, ITER = iter, MINDIST = mindist, NOISE_PSF = psf_sigma, MASKRAD = maskrad, UNWEIGHTED=unweighted, TMPDIR = tmpdir, LOCAL_SKY=local_sky, USE_CENTROID=use_centroid, oversamp = oversamp;, THRESHOLD=threshold
 ;   PSFMAKER, x_psf, y_psf, x, y, f, im, noise, nrad, FOVMASK = fov_mask, PSF=psf,  BACKGROUND=background, DEBUG = debug, ITER = iter, MINDIST = mindist, NOISE_PSF = psf_sigma, MASKRAD = maskrad, UNWEIGHTED=unweighted, TMPDIR = tmpdir, LOCAL_SKY=local_sky, USE_CENTROID=use_centroid, oversamp = oversamp, THRESHOLD=threshold
 
@@ -120,7 +126,7 @@ psf_size = 2*maskrad+1
     writefits, tmpdir + 'stars.fits', stars
     writefits, tmpdir + 'bg.fits', background
     
-    sat_th = 15000
+    sat_th = 50000
     
     unsat = WHERE(f lt sat_th, n_unsat)
     IF n_unsat GT 0 THEN BEGIN
@@ -165,7 +171,7 @@ psf_size = 2*maskrad+1
   ; Valid reference sources
   ; are those sources that are contained
   ; in field of view (at least to psf_frac part)
-  psf_frac = 0.7
+  psf_frac = 0.9
   boxhw = psf_size/2
   dummy = replicate(1,psf_size,psf_size)
   dummy = circ_mask(dummy,boxhw,boxhw,maskrad)

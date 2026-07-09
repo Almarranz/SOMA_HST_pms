@@ -41,6 +41,7 @@ from hst_irZP import get_vegazp
 import astroalign as aa
 from pyplots import plot_two_hists_sigma
 from pyplots import sig_cl
+from glob import glob
 # %%plotting parametres
 from matplotlib import rc
 from matplotlib import rcParams
@@ -56,8 +57,8 @@ from matplotlib import rcParams
 folder = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/'
 # results = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band}/epoch{epoch}/'
 # results = ''
-# zone = 'G032.03+00.05'
-zone = 'G028.20-00.05'
+zone = 'G032.03+00.05'
+# zone = 'G028.20-00.05'
 band = '160w'
 # band = '128n'
 # epoch = 2
@@ -129,8 +130,8 @@ d_pm = 150*u.mas
 # =============================================================================
 # CLUSTERS
 # =============================================================================
-# look_for_cluster = 'no'
-look_for_cluster = 'yes'
+look_for_cluster = 'no'
+# look_for_cluster = 'yes'
 
 # =============================================================================
 # Dictionaries
@@ -149,17 +150,21 @@ wloop_counter = 0
 
 
 for epoch in range(1,3):
-    results = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band}/epoch{epoch}/'
     
     if red_techn == 'Gaia':
+        results = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band}/epoch{epoch}/'
         cat = Table.read(results + f'{zone}_EP{epoch}_f{band}_drz_sci_stars{band}.txt', format = 'ascii')
         ima = fits.open(folder  + f'{zone}/gaia_alignment/Epoch{epoch}/{zone}_EP{epoch}_f{band}_drz_sci.fits')
         wcs = WCS(ima[0].header)
         scale_pix = np.sqrt(ima[0].header['CD1_1']**2 + ima[0].header['CD2_1']**2 )*3600
         
     if red_techn == 'Original':
-        cat = Table.read(results + f'hst_ep{epoch}_f{band}_drz_stars{band}.txt', format = 'ascii')
-        ima = fits.open(folder  + f'{zone}/gaia_alignment/Epoch{epoch}/hst_ep{epoch}_f{band}_drz.fits')
+        results = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band}_noAlig/epoch{epoch}/'
+        cat = Table.read(results + f'hst_{zone}_epoch{epoch}_stars_f{band}.txt', format = 'ascii')
+        pattern = folder + f"{zone}/epoch{epoch}/hst_*f{band}*"
+        
+        ima_name = os.path.basename(glob(pattern)[0])
+        ima = fits.open(glob(pattern)[0] + f'/{ima_name}_drz.fits')
         wcs = WCS(ima[1].header)
         scale_pix = np.sqrt(ima[1].header['CD1_1']**2 + ima[1].header['CD2_1']**2 )*3600
     
@@ -177,7 +182,7 @@ for epoch in range(1,3):
     
     cat.write(results + f'calib_{zone}_EP{epoch}_f{band}_drz_sci_stars{band}.txt', format = 'ascii', overwrite = True )
     
-
+    
     
     cat_rd = wcs.pixel_to_world(cat['x'], cat['y'])
     
@@ -191,13 +196,26 @@ for epoch in range(1,3):
     cat['x'] = cat['x']+1 # This +1 is just to make the region file.
     cat['y'] = cat['y']+1
     
-    region(cat, 'x', 'y',
+    
+    limH = 12
+    brig_m = cat['H'] < limH
+    
+    
+    region(cat[brig_m][0:1], 'x', 'y',
+           name = f'Bright_H{limH}_{zone}_Ep{epoch}_stars_xy',
+           save_in = pruebas,
+           wcs = 'physical',
+           color = 'green',
+           marker = 'circulos',
+           radio = 1.3)
+    region(cat[0:1], 'x', 'y',
            name = f'{zone}_Ep{epoch}_stars_xy_0.5s',
            save_in = pruebas,
            wcs = 'physical',
            color = 'cyan',
            marker = 'cross')
     
+    # stop(212)
     cat['x'] = cat['x']-1 
     cat['y'] = cat['y']-1
     
@@ -295,13 +313,37 @@ cat2_match = cat2[idx2_clean]
 
 diff_H = cat2_match['H'] - cat1_match['H']
 
+fig, ax = plt.subplots(1,1,figsize = (7,7))
+ax.axhline(np.mean(diff_H), color = 'tab:orange', label = f'$\Delta H$ = {np.mean(diff_H): .2f} ')
+ax.axhline(np.mean(diff_H) + np.std(diff_H), ls = 'dashed' ,color = 'r', label = f'$\pm\sigma$ = {np.std(diff_H): .2f} ')
+ax.axhline(np.mean(diff_H) - np.std(diff_H), ls = 'dashed' ,color = 'r')
+h = ax.hexbin(cat1_match['H'] , diff_H, norm = LogNorm())
+cbar = plt.colorbar(h, ax=ax)
+ax.legend()
+ax.set_ylabel('$\Delta H$', fontsize = 12)
+ax.set_xlabel('[H]', fontsize = 12)
+
+var_m = (abs(diff_H) > 0.3) & (cat2_match['H'] < 15) 
+
+
+
+region(cat2_match[var_m], 'x', 'y',
+        name = f'Var_{zone}_Ep{epoch}_stars_xy',
+        save_in = pruebas,
+        wcs = 'physical',
+        color = 'blue',
+        marker = 'x')
+
+# stop(320)
+
 mask_H, l_lim,h_lim = sigma_clip(diff_H, sigma=sig_cl_H, masked = True, return_bounds= True, maxiters= 50)
 
 cat2_match = cat2_match[np.logical_not(mask_H.mask)]
 cat1_match = cat1_match[np.logical_not(mask_H.mask)]
-
-
 # %%
+    
+
+
 fig,(ax,ax2) = plt.subplots(1,2)
 # ax.set_title(f'Matching starts {len(cat2_match)}')
 ax.hist(diff_H[np.logical_not(mask_H.mask)], bins = 'auto',histtype = 'step', label = f'\u2605 = {len(cat2_match)}')
@@ -554,18 +596,31 @@ ax.set_xlabel('$\Delta \mu_{xp}$ [mas/yr]')
 ax2.set_xlabel('$\Delta \mu_{yp}$ [mas/yr]')
 ax.legend()
 ax2.legend()
-
 # %%
 
+region_vectors(
+    table=cat1_mi,
+    ra_col='ra',
+    dec_col='dec',
+    pmra_col='pm_x',
+    pmdec_col='pm_y',
+    name=f'{zone}_{band}_f{band}_vec_all',
+    save_in = pruebas,
+    color='blue',
+    wcs='fk5',
+    scale=1
+)
+# %%
+look_for_cluster  = 'yes'
 if look_for_cluster == 'yes':
     
    
     # modes = ['pm_xy_color']
     modes = ['pm_xy']
-    knn = 30
+    knn = 15
     gen_sim = 'kernnel'
-    sim_lim ='minimun'
-    # sim_lim ='mean'
+    # sim_lim ='minimun'
+    sim_lim ='mean'
 
     clus_dic = cluster_finder.finder(cat1_mi, 'pm_x', 'pm_y',
                                  'x', 'y', 
