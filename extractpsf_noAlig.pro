@@ -41,20 +41,20 @@ if not(FILE_TEST(pruebas + 'tmp')) then FILE_MKDIR, pruebas + 'tmp'
 ; reference stars
 delta_mag = 5.
 delta_r = 10
-nref_max = 50 ; max number of PSF reference stars: result not significantly sensitive to this parameter
+nref_max = 20 ; max number of PSF reference stars: result not significantly sensitive to this parameter
 
 ; Parameters that need to be edited frequently
-min_correlation = 0.7 ; high correlation threshold is importante to avoid detecting saturated or corrupted sources
+min_correlation = 0.9 ; high correlation threshold is importante to avoid detecting saturated or corrupted sources
 psf_fwhm = 2.0 ; very approximate value
-unweighted = 0 ; If 1, then use unweighted median of the stars that are selected to represent the PSF
+unweighted = 1 ; If 1, then use unweighted median of the stars that are selected to represent the PSF
 
 ; Parameters for PSF estimation and StarFinder
 ; ------------------------------------------------
 
 correl_mag = 4.0 ; as far as I remember this parameter is not very important
-deblend = 0     ; deblend close stars?
+deblend = 1    ; deblend close stars?
 deblost = 0      ; try to deblend stars that appear to deviate from PSF shape (i.e. they appear to be merged)
-niter = 2        ; 2 iterations are standard
+niter = 1        ; 2 iterations are standard
 rel_thresh = 1   ; use relative threshold for source detection (i.e. sigmas) 
 guide_x = ""     ; completely irrelevant, but necessary for our StarFinder version
 guide_y = ""     ; completely irrelevant, but necessary for our StarFinder version
@@ -76,10 +76,30 @@ psf_size = 2*maskrad+1
   support = replicate(0,n1,n2)
   support[good] = 1
   
+   ; This lauch the widget to manually select the psf stars
+;    device, decomposed = 0
+;    boxsize = 11. ; width of box within which maximum is searched after a click
+;    disp_opt = default_display_opt(im)
+;    disp_opt.stretch = 'logarithm'
+;    disp_opt.range = max(im)*[1.0e-3,1.0]
+;    display_image, im, wnum, OPTIONS = disp_opt, MODIFY_OPT = modify_opt
+;    click_on_max, im, /MARK, BOXSIZE = boxsize, x_0, y_0
+;    measure_centroid, im, x_0, y_0, boxsize
+;    confirm_stars, im, wnum, disp_opt, x_0, y_0, psf_size, x_psf, y_psf
+;    wdelete, wnum
+;    
+; ;     x_psf = x_0
+; ;     y_psf = y_0
+; 
+;    print, x_psf, y_psf
+   
+   
+  
+  
 ; 1) First estimate of PSF
 ; detect PSF reference sources automatically
 ; ----------------------------
-  threshold = 100. * median(noise[where(noise gt 0)])
+  threshold = 500. * median(noise[where(noise gt 0)])
   background = estimate_background(im,back_box)
   search_objects, im, LOW_SURFACE = background, threshold, $
                   PRE_SMOOTH = 1, MINIF = 2 , $ ;THIS WAS CHANGED PRE_SMOOTH AND MINIF. DEFAULTS WERE 1 AND 2.
@@ -106,8 +126,12 @@ psf_size = 2*maskrad+1
   psf = circ_mask(psf, maskrad, maskrad, maskrad)
   psf = psf/total(psf)  ; normalization of PSF
   writefits, tmpdir + 'tmppsf.fits', psf
-;STOP
-  ; Run StarFinder and iterate search for PSF reference stars and PSF extraction
+  
+ 
+  
+  
+; STOP
+;   Run StarFinder and iterate search for PSF reference stars and PSF extraction
   ; --------------------------------------------------------------------------
 
   Threshold = [5, 5] ;THIS WAS 1, WORKS WITH 5.
@@ -127,18 +151,20 @@ psf_size = 2*maskrad+1
     writefits, tmpdir + 'bg.fits', background
     
     sat_th = 50000
+;     stop
     
-    unsat = WHERE(f lt sat_th, n_unsat)
-    IF n_unsat GT 0 THEN BEGIN
-        x = x[unsat]
-        y = y[unsat]
-        f = f[unsat]
-    ENDIF
-;     
-    ; save stars for use in PSFMAKER
-    x_stars = x
-    y_stars = y
-    f_stars = f
+    
+;     unsat = WHERE(f lt sat_th, n_unsat)
+;     IF n_unsat GT 0 THEN BEGIN
+;         x = x[unsat]
+;         y = y[unsat]
+;         f = f[unsat]
+;     ENDIF
+; ;     
+;     ; save stars for use in PSFMAKER
+;     x_stars = x
+;     y_stars = y
+;     f_stars = f
     
   
   
@@ -220,6 +246,7 @@ psf_size = 2*maskrad+1
 ;  psf[neg] = 0
   psf = circ_mask(psf, mid, mid, maskrad)
   psf = psf/total(psf)  ; normalization of PSF
+  
 ;   writefits, path + 'psf_'+filter+'.fits', psf
 ;   writefits, path + 'psf_sigma'+filter+'.fits', psf_noise/total(psf)
   
