@@ -1,9 +1,16 @@
-PRO ASTROPHOT_noAlig, zone, filter, epoch
+PRO EXTRACTPSF_noAlig, zone, filter, epoch
+
 
 zone = 'G028.20-00.05'
 filter = '160w'
 epoch = '1'
+
+
+; base = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/G028.20-00.05/epoch1/'
 base = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/'+ zone +'/epoch'+ epoch +'/'
+
+
+
 
 pattern = base + 'hst_*' + filter + '*'
 paths = FILE_SEARCH(pattern, /TEST_DIRECTORY)
@@ -12,123 +19,214 @@ path = paths + '/'
 pruebas = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/pruebas/'
 tmpdir = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/'+ zone +'/f'+ filter +'_noAlig/epoch'+ epoch +'/tmp/'
 results = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/'+ zone +'/f'+ filter +'_noAlig/epoch'+ epoch +'/'
+
+
+ZP = 25.0 ; random ZP
+maskrad = 41
+nrad = 4
+
+
+
+
 nam = FILE_BASENAME(path) + '_drz
 print, path
 print, nam
-  ; create tmp directory if necessary
-;   if not(FILE_TEST(path + 'tmp')) then FILE_MKDIR, path + 'tmp'
-  if not(FILE_TEST(results + 'tmp')) then FILE_MKDIR, results + 'tmp'
-  
+; nam = 'hst_ep'+ epoch + '_f'+ filter + '_drz'
+; create tmp directory if necessary
+; if not(FILE_TEST(path + 'tmp')) then FILE_MKDIR, path + 'tmp'
+if not(FILE_TEST(pruebas + 'tmp')) then FILE_MKDIR, pruebas + 'tmp'
 
-;   psf = readfits(path + 'psf_'+filter+'.fits') ;use Rainer's PSF worst case scenerio. psf = readfits(path + 'psf_'+filter+'_rainer.fits')
-  psf = readfits(tmpdir + 'psf_'+filter+'.fits') ;use Rainer's PSF worst case scenerio. psf = readfits(path + 'psf_'+filter+'_rainer.fits')
 
-  ; load image and noise map
+; minimum mag difference and distance for secondary stars near
+; reference stars
+delta_mag = 5.
+delta_r = 10
+nref_max = 50 ; max number of PSF reference stars: result not significantly sensitive to this parameter
+
+; Parameters that need to be edited frequently
+min_correlation = 0.7 ; high correlation threshold is importante to avoid detecting saturated or corrupted sources
+psf_fwhm = 2.0 ; very approximate value
+unweighted = 0 ; If 1, then use unweighted median of the stars that are selected to represent the PSF
+
+; Parameters for PSF estimation and StarFinder
+; ------------------------------------------------
+
+correl_mag = 4.0 ; as far as I remember this parameter is not very important
+deblend = 0     ; deblend close stars?
+deblost = 0      ; try to deblend stars that appear to deviate from PSF shape (i.e. they appear to be merged)
+niter = 2        ; 2 iterations are standard
+rel_thresh = 1   ; use relative threshold for source detection (i.e. sigmas) 
+guide_x = ""     ; completely irrelevant, but necessary for our StarFinder version
+guide_y = ""     ; completely irrelevant, but necessary for our StarFinder version
+back_box = maskrad           ; radius for estimation of background 
+psf_size = 2*maskrad+1
+
 ;   im = readfits(path + nam + '.fits',header,EXT=0) ;careful here! check the extension!
   im = readfits(path + nam + '.fits',header,EXT=1) ;careful here! check the extension!
   good = where(FINITE(im),complement=isnan)
   im[isnan] = 0
   noise = sqrt(im)
-;   writefits, path + 'im.fits', im, /COMPRESS
-;   writefits, path + 'noise.fits', noise, /COMPRESS
- 
+;   writefits, path + 'im'+filter+'.fits', im, /COMPRESS
+  writefits, pruebas + 'im'+filter+'.fits', im 
   writefits, tmpdir + 'im.fits', im
   writefits, tmpdir + 'noise.fits', noise
- 
   sz = size(im)
   n1 = sz[1]
   n2 = sz[2]
+  support = replicate(0,n1,n2)
+  support[good] = 1
+  
+; 1) First estimate of PSF
+; detect PSF reference sources automatically
+; ----------------------------
+  threshold = 100. * median(noise[where(noise gt 0)])
+  background = estimate_background(im,back_box)
+  search_objects, im, LOW_SURFACE = background, threshold, $
+                  PRE_SMOOTH = 1, MINIF = 2 , $ ;THIS WAS CHANGED PRE_SMOOTH AND MINIF. DEFAULTS WERE 1 AND 2.
+                  n, x, y, f
+  good = where(f gt 0,n)
+  x_psf = x[good]
+  y_psf = y[good]
+  f_psf = f[good]
+  print, 'using '+ strn(n) + ' PSF reference stars.'
+  debug = 0
+  iter = 1                        ; more iterations do not necessarily make it better
+  mindist = 10 ; THIS WAS 2, BUT WORKS AT 30. WORKED AT 10 FOR G28
+ ; Use Gaussian PSF
+  psf = psf_gaussian(NPIXEL=psf_size,FWHM=psf_fwhm,/NORMALIZE,/DOUBLE)
+  threshold = 100
+  PSFMAKER, x_psf, y_psf, x, y, f, im, noise, nrad, FOVMASK = fov_mask, PSF=psf,  BACKGROUND=background, DEBUG = debug, ITER = iter, MINDIST = mindist, NOISE_PSF = psf_sigma, MASKRAD = maskrad, UNWEIGHTED=unweighted, TMPDIR = tmpdir, LOCAL_SKY=local_sky, USE_CENTROID=use_centroid, oversamp = oversamp;, THRESHOLD=threshold
+;   PSFMAKER, x_psf, y_psf, x, y, f, im, noise, nrad, FOVMASK = fov_mask, PSF=psf,  BACKGROUND=background, DEBUG = debug, ITER = iter, MINDIST = mindist, NOISE_PSF = psf_sigma, MASKRAD = maskrad, UNWEIGHTED=unweighted, TMPDIR = tmpdir, LOCAL_SKY=local_sky, USE_CENTROID=use_centroid, oversamp = oversamp, THRESHOLD=threshold
 
-; Settings for StarFinder you are most likely to 
-; want to play with
-; these parameters apply to the final StarFinder run
-; not to PSF extraction
-; Note that the thesholds are set very low, to 0.5 sigma (lower is
-; probably even possible)
-; This means that our simple noise map overestiamtes the actual uncertainties
-; ------------------------------------------------
+ 
+  mmm, psf, skymod, skysigma , skyskew
+  psf = psf - skymod
+  neg = where(psf lt 0,count)
+  if (count gt 0) then  psf[neg] = 0
+  psf = circ_mask(psf, maskrad, maskrad, maskrad)
+  psf = psf/total(psf)  ; normalization of PSF
+  writefits, tmpdir + 'tmppsf.fits', psf
+;STOP
+  ; Run StarFinder and iterate search for PSF reference stars and PSF extraction
+  ; --------------------------------------------------------------------------
 
-  sf_thresh = [.5,.5]
-;   sf_thresh = [1.,1.]
-  back_box = 20
-  deblend = 0
-  deblost = 0
-  compbg = 1
-  posbg = 1
-
-; Apart from the sigma threshold (sf_thresh), the correlation threshold is the most important parameter
-; for values close to 1 you may lose real point sources
-; for small values (~0.7) you will pick up spurious sources in the
-; regionwhere the diffuse emission is high
-; With 0.9 you still pick up sources in the region of diffuse emission
-  min_correlation = 0.9
-
-
-; General settings for StarFinder
-; --------------------------
-
-  correl_mag = 4
-  niter = 2
-  rel_thresh = 1
-  guide_x = ""
-  guide_y = ""
-
-
-; StarFinder run
-;####################
-
-  starfinder, im, psf, X_BAD=xbad, Y_BAD = ybad, $
+  Threshold = [5, 5] ;THIS WAS 1, WORKS WITH 5.
+  estim_bg = 1
+  starfinder, im, psf, X_BAD=x_bad, Y_BAD = y_bad, $
         BACKGROUND = background, BACK_BOX = back_box, $
-        sf_thresh, REL_THRESHOLD = rel_thresh, /PRE_SMOOTH, $
+                     threshold, REL_THRESHOLD = rel_thresh, /PRE_SMOOTH, $
         NOISE_STD = noise, min_correlation, $
         CORREL_MAG = correl_mag, INTERP_TYPE = 'I', $
-	ESTIMATE_BG = compbg, DEBLEND = deblend, DEBLOST = deblost, $
-        N_ITER = niter, SILENT=0, $
-	GUIDE_X = guide_x, GUIDE_Y = guide_y, $
-	SV_SIGMA_R = 0.0085, SV_SIGMA_A= 0.0050, $
-      	x, y, f, sx, sy, sf, c, STARS = stars, $
-        LOGFILE = logfilename, /CUBIC, $
-        XBAD = xbad, YBAD = ybad, POSBG = posbg
-
-  writefits, tmpdir + STRMID(nam,0,100) + '_stars'+filter+'.fits', stars, header
-  writefits, tmpdir + STRMID(nam,0,100) + '_bg'+filter+'.fits', background, header
-  writefits, tmpdir + STRMID(nam,0,100) + '_resid'+filter+'.fits', im-stars-background, header
-  subtracted = im-stars
-  writefits, tmpdir + STRMID(nam,0,100) + '_subtracted'+filter+'.fits', subtracted, header
+        ESTIMATE_BG = estim_bg, DEBLEND = deblend, DEBLOST = deblost, $
+        N_ITER = niter, SILENT=1, $
+        GUIDE_X = guide_x, GUIDE_Y = guide_y, $
+        SV_SIGMA_R = 0.0085, SV_SIGMA_A= 0.0050, $
+        x, y, f, sx, sy, sf, c, STARS = stars, $
+        LOGFILE = logfilename, /CUBIC;, /NO_SLANT
+    writefits, tmpdir + 'stars.fits', stars
+    writefits, tmpdir + 'bg.fits', background
+    
+    sat_th = 50000
+    
+    unsat = WHERE(f lt sat_th, n_unsat)
+    IF n_unsat GT 0 THEN BEGIN
+        x = x[unsat]
+        y = y[unsat]
+        f = f[unsat]
+    ENDIF
+;     
+    ; save stars for use in PSFMAKER
+    x_stars = x
+    y_stars = y
+    f_stars = f
+    
   
-;   writefits, path + STRMID(nam,3,100) + '_stars'+filter+'.fits', stars, header, /COMPRESS
-;   writefits, path + STRMID(nam,3,100) + '_bg'+filter+'.fits', background, header, /COMPRESS
-;   writefits, path + STRMID(nam,3,100) + '_resid'+filter+'.fits', im-stars-background, header, /COMPRESS
-;   subtracted = im-stars
-;   writefits, path + STRMID(nam,3,100) + '_subtracted'+filter+'.fits', subtracted, header, /COMPRESS
-;   
-  ; save list
-  ; select stars in region with more than covfrac coverage
-  nstars = n_elements(f)
+  
+    
+ ; 2) PSF extraction
+ ; ---------------------
 
-;   openw, outp, results + STRMID(nam,0,100) + '_stars'+filter+'.txt', /get_lun
-  openw, outp, results + 'hst_' + zone + '_epoch' + epoch + '_stars_f'+filter+'.txt', /get_lun
-  printf, outp, 'x y f sx sy sf'
-  for s = 0, nstars-1 do begin
-   xi = round(x[s]) & yi = round(y[s])
-   printf, outp, format='(6f13.3)', x[s], y[s], f[s], sx[s], sy[s], sf[s]
+  mag = ZP - 2.5 * alog10(f)
+  ord = sort(mag)
+  mag = mag[ord]
+  x = x[ord]
+  y = y[ord]
+  x_psf = x
+  y_psf = y
+ mag_psf = mag
+ ISOLATED_STARS, x, y, mag, x_psf, y_psf, mag_psf, delta_mag, delta_r, ind_iso
+  x = x[ind_iso]
+  y = y[ind_iso]
+  f = f[ind_iso]
+  mag = mag[ind_iso]
+  ord = sort(mag)
+  mag = mag[ord]
+  x = x[ord]
+  y = y[ord]
+  f = f[ord]
+  n_iso = n_elements(ind_iso)
+  print, 'Found ' + strn(n_iso) + ' isolated stars.'
+  
+  ; Avoid masked sources or sources near edges
+  ; Valid reference sources
+  ; are those sources that are contained
+  ; in field of view (at least to psf_frac part)
+  psf_frac = 0.9
+  boxhw = psf_size/2
+  dummy = replicate(1,psf_size,psf_size)
+  dummy = circ_mask(dummy,boxhw,boxhw,maskrad)
+  npix_psf = total(dummy)
+  valid_ref = replicate(1,n_iso)
+
+  sub_arrays, support, round(x), round(y), psf_size, psffovs, psfmasks
+  for iref = 0, n_iso-1 do begin
+     tmpmask = psfmasks[*,*,iref]*psffovs[*,*,iref]
+     dummy = circ_mask(tmpmask,boxhw,boxhw,maskrad)
+     if total(dummy) lt round(psf_frac*npix_psf) then begin
+        valid_ref[iref] = 0
+     endif
   endfor
-  free_lun, outp
+  acceptref = where(valid_ref gt 0, nref_accept,complement=reject)
+  x = x[acceptref]
+  y = y[acceptref]
+  f = f[acceptref]
+  up = (nref_max < nref_accept) - 1
+  
+  x_psf = x[0:up]
+  y_psf = y[0:up]
+  f_psf = f[0:up]
 
 ; make map of point sources with Gaussian PSFs (helpful for extremely
 ; crowded fields)
 ; -------------------------------------------------------------
-;   readcol, path + STRMID(nam,3,100) + '_stars'+filter+'.txt', x, y, f
-  readcol, results + 'hst_' + zone + '_epoch' + epoch + '_stars_f'+filter+'.txt', SKIPLINE =1, Format ='A,A,A,A,A,A'
-  x=float(x)
-  y=float(y)
-  f=float(f)
-  dat = ptr_new({X_size: 10, Y_size: 10, Sigma_x: 1.0, Sigma_y: 1.0, Angle: 0.0})
-  im = image_model(x,y,f,n1,n2,'gaussian', dat)
-;   writefits, path + STRMID(nam,3,100) + '_map'+filter+'.fits', im, /COMPRESS
-  writefits, tmpdir +  'hst_' + zone + '_epoch' + epoch +'_map'+filter+'.fits', im 
+  refim = image_model(x_psf,y_psf,f_psf,n1,n2,psf)
+  writefits, tmpdir + 'psfstars.fits', refim
+  print,'*******************'
+  print, 'n_elements(x_psf)', n_elements(x_psf)
+  
+   iter = 1
+   oversamp = 1
+   use_centroid = 0
+   debug = 0
+   PSFMAKER, x_psf, y_psf, x_stars, y_stars, f_stars, im, noise, nrad, FOVMASK = fov_mask, PSF=psf,  BACKGROUND=background, DEBUG = debug, ITER = iter, MINDIST = mindist, NOISE_PSF = psf_noise, MASKRAD = maskrad, UNWEIGHTED=unweighted, TMPDIR = tmpdir, LOCAL_SKY=1, oversamp = oversamp, USE_CENTROID=use_centroid, THRESHOLD=threshold
 
-
-  print, 'Finished ' + nam + '.'
+  sz = size(psf)
+  n1 = sz[1]
+  n2 = sz[2]
+  mid =  n1/2
+;  mmm, psf, skymod, skysigma , skyskew
+;  psf = psf - skymod
+;  neg = where(psf lt 0)
+;  psf[neg] = 0
+  psf = circ_mask(psf, mid, mid, maskrad)
+  psf = psf/total(psf)  ; normalization of PSF
+;   writefits, path + 'psf_'+filter+'.fits', psf
+;   writefits, path + 'psf_sigma'+filter+'.fits', psf_noise/total(psf)
+  
+  writefits, tmpdir + 'psf_'+filter+'.fits', psf
+  writefits, tmpdir + 'psf_sigma'+filter+'.fits', psf_noise/total(psf)
+  
+  print, 'FINITO'
+  
 
 END
