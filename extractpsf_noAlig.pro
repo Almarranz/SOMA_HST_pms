@@ -25,7 +25,7 @@ ZP = 25.0 ; random ZP
 
 ; Keep the scripted PSF model identical to the GUI extraction below.
 ; XPsf_Extract reported PSF_SIZE = 41 for the successful GUI run.
-psf_size = 41L
+psf_size = 83L
 maskrad = (psf_size - 1L)/2L
 nrad = 4
 
@@ -49,7 +49,7 @@ if not(FILE_TEST(pruebas + 'tmp')) then FILE_MKDIR, pruebas + 'tmp'
 ; reference stars
 delta_mag = 5.
 delta_r = maskrad
-nref_max = 100 ; max number of PSF reference stars: result not significantly sensitive to this parameter
+nref_max = 10 ; max number of PSF reference stars: result not significantly sensitive to this parameter
 
 ; Parameters that need to be edited frequently
 min_correlation = 0.9 ; high correlation threshold is importante to avoid detecting saturated or corrupted sources
@@ -106,12 +106,29 @@ back_box = maskrad           ; radius for estimation of background
   
 ; 1) GUI-equivalent PSF extraction
 ; --------------------------------
-; These are the ten coordinates printed by XPsf_Extract in the GUI session.
-; PSF_EXTRACT performs the GUI's centroiding, median stack, neighbour fitting,
-; and saturated-core handling.  Do not replace this result with a Gaussian or
-; with PSFMAKER before comparing it with the GUI result.
-x_psf = [464L, 578L, 1146L, 298L, 557L, 452L, 672L, 873L, 464L, 564L]
-y_psf = [814L, 901L, 750L, 712L, 490L, 191L, 649L, 795L, 411L, 1104L]
+; First estimate of PSF
+; detect PSF reference sources automatically
+; ----------------------------
+  threshold = 100. * median(noise[where(noise gt 0)])
+  background = estimate_background(im,back_box)
+  search_objects, im, LOW_SURFACE = background, threshold, $
+                  PRE_SMOOTH = 0, MINIF = 1 , $ ;THIS WAS CHANGED PRE_SMOOTH AND MINIF. DEFAULTS WERE 1 AND 2.
+                  n, x, y, f
+  good = where(f gt 0,n)
+  x_psf = x
+  y_psf = y
+  f_psf = f
+;   print, 'using '+ strn(n) + ' PSF reference stars.'
+;   debug = 0
+;   iter = 1                        ; more iterations do not necessarily make it better
+;   mindist = 10 ; THIS WAS 2, BUT WORKS AT 30. WORKED AT 10 FOR G28
+;  ; Use Gaussian PSF
+;   psf = psf_gaussian(NPIXEL=psf_size,FWHM=psf_fwhm,/NORMALIZE,/DOUBLE)
+;   threshold = 100
+; No secondary sources were selected in the GUI run.  In this IDL version
+; zero-length arrays are invalid; !NULL is what the GUI passes in this case.
+; x_psf = [464L, 578L, 1146L, 298L, 557L, 452L, 672L, 873L, 464L, 564L]
+; y_psf = [814L, 901L, 750L, 712L, 490L, 191L, 649L, 795L, 411L, 1104L]
 
 ; No secondary sources were selected in the GUI run.  In this IDL version
 ; zero-length arrays are invalid; !NULL is what the GUI passes in this case.
@@ -119,6 +136,7 @@ x_secondary = !NULL
 y_secondary = !NULL
 psf_fwhm_gui = 0.0
 background = 0.0
+
 
 psf_extract, x_psf, y_psf, x_secondary, y_secondary, im, $
              psf_size, psf, psf_fwhm_gui, background, $
