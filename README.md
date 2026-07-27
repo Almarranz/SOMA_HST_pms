@@ -13,10 +13,7 @@ First, we run *Starfinder* over the "drizzeled" images. (Drizzeled images have b
  
         idl -e "extractpsf_GUI_noAlig, '<zone>', '<band>', '<epoch>'"
 
-    > That is an apadted version of *Starfinder* widget, that uses ``PSF_EXTRACT``, that gives higher SNR PSFs than ``PSFMAKER``somehow.  If you want to use the widget
-
-        ``idl 87``
-        and then ``> xtstarfinder``. Find the *Starfinder widget manual* in `/Users/amartinez/Desktop/PhD/StarFinder/starfinder_manual.pdf`
+    > That is an apadted version of *Starfinder* widget, that uses ``PSF_EXTRACT``, that gives higher SNR PSFs than ``PSFMAKER``somehow.  If you want to use the widget type ``idl 87`` and then ``> xtstarfinder``. Find the *Starfinder widget manual* in `/Users/amartinez/Desktop/PhD/StarFinder/starfinder_manual.pdf`
 
 2. `astrophot_noAlig.pro`
    
