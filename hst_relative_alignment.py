@@ -57,8 +57,8 @@ from matplotlib import rcParams
 folder = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/'
 # results = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band}/epoch{epoch}/'
 # results = ''
-zone = 'G032.03+00.05'
-# zone = 'G028.20-00.05'
+# zone = 'G032.03+00.05'
+zone = 'G028.20-00.05'
 band = '160w'
 # band = '128n'
 # epoch = 2
@@ -83,8 +83,8 @@ pixSca = 0.12825 #arcsec/pixel
 
 e_pos_cat  = 0.05# in arcsec. The position errors from starfinder lists are largely overstatimated!!!
 
-red_techn = 'Gaia'
-# red_techn = 'Original'
+# red_techn = 'Gaia'
+red_techn = 'Original'
 # =============================================================================
 # Aligment paremeters
 # =============================================================================
@@ -159,7 +159,7 @@ for epoch in range(1,3):
         scale_pix = np.sqrt(ima[0].header['CD1_1']**2 + ima[0].header['CD2_1']**2 )*3600
         
     if red_techn == 'Original':
-        results = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band}_noAlig/epoch{epoch}/'
+        results = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band}/epoch{epoch}/'
         cat = Table.read(results + f'hst_{zone}_epoch{epoch}_stars_f{band}.txt', format = 'ascii')
         pattern = folder + f"{zone}/epoch{epoch}/hst_*f{band}*"
         

@@ -68,8 +68,8 @@ from matplotlib import rcParams
 folder = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/'
 # results = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band}/epoch{epoch}/'
 # results = ''
-zone = 'G032.03+00.05'
-# zone = 'G028.20-00.05'
+# zone = 'G032.03+00.05'
+zone = 'G028.20-00.05'
 band = '160w'
 # band = '128n'
 # epoch = 2
@@ -124,8 +124,8 @@ e_pm_cat = 20# im mas/yr
 # =============================================================================
 # CLUSTERS
 # =============================================================================
-# look_for_cluster = 'no'
-look_for_cluster = 'yes'
+look_for_cluster = 'no'
+# look_for_cluster = 'yes'
 
 # =============================================================================
 # Dictionaries

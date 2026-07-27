@@ -3,10 +3,17 @@
 
 PRO EXTRACTPSF_GUI_noAlig, zone, filter, epoch
 
+  
   ; Command-line defaults for this GUI extraction.
   zone = 'G028.20-00.05'
   filter = '160w'
-  epoch = '1'
+;   epoch = '1'
+epochs = ['1', '2']
+
+
+FOR i = 0, N_ELEMENTS(epochs)-1 DO BEGIN
+   epoch = epochs[i]
+
 
   base = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/' + $
          'SOMA_HST_pms_variability/' + zone + '/epoch' + epoch + '/'
@@ -21,7 +28,7 @@ PRO EXTRACTPSF_GUI_noAlig, zone, filter, epoch
   filename = path + nam + '.fits'
 
   tmpdir = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/' + $
-           zone + '/f' + filter + '_noAlig/epoch' + epoch + '/tmp/'
+           zone + '/F' + filter + '/epoch' + epoch + '/tmp/'
   IF NOT FILE_TEST(tmpdir, /DIRECTORY) THEN FILE_MKDIR, tmpdir
 
   ; HST drizzled image: SCI is extension 1, WHT is extension 2.
@@ -109,12 +116,29 @@ PRO EXTRACTPSF_GUI_noAlig, zone, filter, epoch
   IF TOTAL(psf) LE 0 THEN MESSAGE, 'PSF_EXTRACT returned a non-positive PSF.'
    mid =  n1/2
    print,mid
-;    stop
- ;  mmm, psf, skymod, skysigma , skyskew
- ;  psf = psf - skymod
- ;  neg = where(psf lt 0)
- ;  psf[neg] = 0
-;    psf = circ_mask(psf, mid, mid, maskrad)
+   
+   ; Optional GUI-equivalent halo smoothing
+; do_halo_smooth = 1
+do_halo_smooth = 0
+
+IF do_halo_smooth THEN BEGIN
+   sz_psf = size(psf)
+   min_psf_size = min([sz_psf[1], sz_psf[2]])
+
+   ; Same defaults used by XPsf_Smooth:
+   ; for a 41x41 PSF: r0=10, radial width=5, angular width=22.5 deg.
+   r0 = round(float(min_psf_size)/4.0)
+   r_width = round(float(r0)/2.0)
+   a_width = 22.5 * !pi / 180.0
+
+   psf = halo_smooth(psf, r0, $
+                     R_WIDTH=r_width, A_WIDTH=a_width, $
+                     R_EXP=2, A_EXP=3)
+
+   ; Restore unit-flux normalization after smoothing.
+;    psf = psf / total(psf)
+ENDIF
+
    psf = psf/total(psf)  ; normalization of PSF
   
   WRITEFITS, tmpdir + 'psf_gui_' + filter + '.fits', psf
@@ -124,5 +148,7 @@ PRO EXTRACTPSF_GUI_noAlig, zone, filter, epoch
 ;   PRINT, 'PSF written to: ', tmpdir + 'psf_gui_' + filter + '.fits'
   PRINT, 'PSF written to: ', tmpdir + 'psf_' + filter + '.fits'
   PRINT, 'Measured PSF FWHM (pixels): ', psf_fwhm
+
+endfor
 
 END

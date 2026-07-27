@@ -2,7 +2,16 @@ PRO ASTROPHOT_noAlig, zone, filter, epoch
 
 zone = 'G028.20-00.05'
 filter = '160w'
-epoch = '1'
+
+
+; epoch = '2'
+epochs = ['1', '2']
+; epochs = ['2']
+
+
+FOR i = 0, N_ELEMENTS(epochs)-1 DO BEGIN
+background = !NULL
+   epoch = epochs[i]
 base = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/'+ zone +'/epoch'+ epoch +'/'
 
 pattern = base + 'hst_*' + filter + '*'
@@ -10,8 +19,8 @@ paths = FILE_SEARCH(pattern, /TEST_DIRECTORY)
 path = paths + '/'
 
 pruebas = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/pruebas/'
-tmpdir = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/'+ zone +'/f'+ filter +'_noAlig/epoch'+ epoch +'/tmp/'
-results = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/'+ zone +'/f'+ filter +'_noAlig/epoch'+ epoch +'/'
+tmpdir = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/'+ zone +'/f'+ filter +'/epoch'+ epoch +'/tmp/'
+results = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/'+ zone +'/f'+ filter +'/epoch'+ epoch +'/'
 nam = FILE_BASENAME(path) + '_drz
 print, path
 print, nam
@@ -132,4 +141,5 @@ print, nam
 
   print, 'Finished ' + nam + '.'
 
+ENDFOR
 END

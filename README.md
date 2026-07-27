@@ -7,20 +7,22 @@ The scripts are located in `/Users/amartinez/Desktop/Projects/SOMA_HST_pm/script
 First, we run *Starfinder* over the "drizzeled" images. (Drizzeled images have been corrected from distortions, cosmic rays etc)
 > The version with the `_noAlig.pro` subfix are for the HST drizzeld imagaes that *ARE NOT ALIGN WITH GAIA*. The works in the same way but they produces star lists with different names.
 
-1. `extractpsf.pro` 
+1. `extractpsf_GUI_noAlig.pro` 
     Extract the psf.
 
  
-        idl -e "extractpsf, '<zone>', '<band>', '<epoch>'"
+        idl -e "extractpsf_GUI_noAlig, '<zone>', '<band>', '<epoch>'"
 
-    > This script generate the psf automatically, and seems to work correctly. However, there is the possiboity to use *Starfinde* widget to do so. Just open a terminal al type: ``idl 87``
+    > That is an apadted version of *Starfinder* widget, that uses ``PSF_EXTRACT``, that gives higher SNR PSFs than ``PSFMAKER``somehow.  If you want to use the widget
+
+        ``idl 87``
         and then ``> xtstarfinder``. Find the *Starfinder widget manual* in `/Users/amartinez/Desktop/PhD/StarFinder/starfinder_manual.pdf`
 
-2. `astrophot.pro`
+2. `astrophot_noAlig.pro`
    
     Generate the stars lists.
 
-         idl -e "astrophot, '<zone>', '<band>', '<epoch>'"
+         idl -e "astrophot_noAlig, '<zone>', '<band>', '<epoch>'"
 
 
 ## Astrometry
