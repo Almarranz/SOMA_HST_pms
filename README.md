@@ -2,6 +2,7 @@
 
 The scripts are located in `/Users/amartinez/Desktop/Projects/SOMA_HST_pm/scripts/`
 
+We have data in four different filters: F110W (J band), F128N (PaB), F160W (H band), and F164N (FeII). Two different epochs, with a ~7 to 10 years basetime, in 7 different regions  
 ## Photometry
 
 First, we run *Starfinder* over the "drizzeled" images. (Drizzeled images have been corrected from distortions, cosmic rays etc)
