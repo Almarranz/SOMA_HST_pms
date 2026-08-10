@@ -68,8 +68,8 @@ from matplotlib import rcParams
 folder = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/'
 # results = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band}/epoch{epoch}/'
 # results = ''
-# zone = 'G032.03+00.05'
-zone = 'G028.20-00.05'
+zone = 'IRAS16562-3959'
+# zone = 'G028.20-00.05'
 band = '160w'
 # band = '128n'
 # epoch = 2
@@ -82,7 +82,7 @@ pruebas = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/pruebas/'
 # =============================================================================
 radius = 200*u.arcsec
 max_sep = 50*u.mas
-mag_gaia = [10,18]
+mag_gaia = [10,20]
 e_pm_gaia = 0.3
 e_pos_gaia = 1
 # =============================================================================
@@ -94,8 +94,8 @@ pixSca = 0.12825 #arcsec/pixel
 
 e_pos_cat  = 0.05# in arcsec. The position errors from starfinder lists are largely overstatimated!!!
 
-red_techn = 'Gaia'
-# red_techn = 'Original'
+# red_techn = 'Gaia'
+red_techn = 'Original'
 # =============================================================================
 # Aligment paremeters
 # =============================================================================
@@ -124,8 +124,8 @@ e_pm_cat = 20# im mas/yr
 # =============================================================================
 # CLUSTERS
 # =============================================================================
-look_for_cluster = 'no'
-# look_for_cluster = 'yes'
+# look_for_cluster = 'no'
+look_for_cluster = 'yes'
 
 # =============================================================================
 # Dictionaries
@@ -155,7 +155,7 @@ while lopping > 0:
             scale_pix = np.sqrt(ima[0].header['CD1_1']**2 + ima[0].header['CD2_1']**2 )*3600
             
         if red_techn == 'Original':
-            results = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band}_noAlig/epoch{epoch}/'
+            results = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band}/epoch{epoch}/'
             cat = Table.read(results + f'hst_{zone}_epoch{epoch}_stars_f{band}.txt', format = 'ascii')
             pattern = folder + f"{zone}/epoch{epoch}/hst_*f{band}*"
             
