@@ -27,6 +27,9 @@ First, we run *Starfinder* over the "drizzeled" images. (Drizzeled images have b
 
 We align the stars list witn the *Gaia* stars. By default we a use a degree 2 polynomial.
 
+3. `hst_filter_matching.py`. Make a match between H and J bands. 
+It store a table with both magnuted calibrated, and xp and yp coordiates proyected to the same tg plane.
+
 4. `hst_gaia_alignment.py`
 
    >  `hst_photometry.py` I intruced the ZP calculation and calibration inside the alignment script.

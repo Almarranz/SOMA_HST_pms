@@ -58,11 +58,14 @@ folder = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability
 # results = ''
 zone = 'G032.03+00.05'
 # zone = 'G028.20-00.05'
-# zones = [ 'AFGL5180','G028.20-00.05', 'G032.03+00.05', 'G35.2-0.74N', 'G339.88-01.26','IRAS07299-1651', 'IRAS16562-3959']
-zones = [ 'IRAS16562-3959']
-band_ls = ['160w', '110w']
+zones = [ 'AFGL5180','G028.20-00.05', 'G032.03+00.05', 'G35.2-0.74N', 'G339.88-01.26','IRAS07299-1651', 'IRAS16562-3959']
+# zones = ['G032.03+00.05']
+band_ls = ['160w']
 
-
+# =============================================================================
+# Matching Lists
+# =============================================================================
+matching_lists = 1#!!!
 
 
 # =============================================================================
@@ -146,7 +149,9 @@ lopping = 1
 # for loop in range(1):
 wloop_counter = 0
 # ZP = 25 # INVENTED
-for zone in zones:
+sigu = 4
+for zone in zones[0+sigu:1+sigu]:
+# for zone in zones:
 
     for band in band_ls:
         print(band)
@@ -178,7 +183,14 @@ for zone in zones:
                 
             if red_techn == 'Original':
                 results = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band}/epoch{epoch}/'
-                cat = Table.read(results + f'hst_{zone}_epoch{epoch}_stars_f{band}.txt', format = 'ascii')
+                if not matching_lists:
+                    cat = Table.read(results + f'hst_{zone}_epoch{epoch}_stars_f{band}.txt', format = 'ascii')
+                if matching_lists:
+                    cat = Table.read(results + f'hst_{zone}_epoch{epoch}_HJ.txt', format = 'ascii')
+                    cat['ra'].unit = 'deg'
+                    cat['dec'].unit = 'deg'
+                    mask_hj = cat['J'] < 99
+                    cat = cat[mask_hj]
                 pattern = folder + f"{zone}/epoch{epoch}/hst_*f{band}*"
                 
                 ima_name = os.path.basename(glob(pattern)[0])
@@ -198,53 +210,54 @@ for zone in zones:
             cat[f'{b_name}'] =  (-2.5*np.log10(cat['f']) + ZP).round(4)
             cat[f'd{b_name}'] = ((2.5 / np.log(10)) * (cat['sf'] / cat['f'])).round(4)
             
-            cat.write(results + f'calib_{zone}_EP{epoch}_f{band}_drz_sci_stars{band}.txt', format = 'ascii', overwrite = True )
-            
-            
-            
-            cat_rd = wcs.pixel_to_world(cat['x'], cat['y'])
-            
-            if epoch == 1:
-                center = SkyCoord(ra = np.mean(cat_rd.ra.value), dec = np.mean(cat_rd.dec.value),
-                                  unit = 'degree', frame = 'icrs')
-            
-            cat['ra'] = cat_rd.ra
-            cat['dec'] = cat_rd.dec
-            
-            cat['x'] = cat['x']+1 # This +1 is just to make the region file.
-            cat['y'] = cat['y']+1
-            
-            
-            limH = 14
-            brig_m = cat[f'{b_name}'] < limH
-            
-            
-            region(cat[brig_m][0:1], 'x', 'y',
-                   name = f'Bright_{b_name}{limH}_{zone}_Ep{epoch}_stars_xy',
-                   save_in = pruebas,
-                   wcs = 'physical',
-                   color = 'green',
-                   marker = 'circulos',
-                   radio = 1.3)
-            region(cat[0:1], 'x', 'y',
-                   name = f'{zone}_Ep{epoch}_stars_xy_0.5s',
-                   save_in = pruebas,
-                   wcs = 'physical',
-                   color = 'cyan',
-                   marker = 'cross')
-            
-            # stop(212)
-            cat['x'] = cat['x']-1 
-            cat['y'] = cat['y']-1
-            
-            cat['x'] = cat['x']*pixSca # These are arcsec
-            cat['y'] = cat['y']*pixSca
-            
-            cat['sx'] = cat['sx']*pixSca # These are arcsec
-            cat['sy'] = cat['sy']*pixSca
-            
-            cat['sxy'] = np.sqrt(cat['sx']**2 + cat['sy']**2)
-            cat = cat[cat['sxy'] > 0]
+            if not matching_lists:
+                cat.write(results + f'calib_{zone}_EP{epoch}_f{band}_drz_sci_stars{band}.txt', format = 'ascii', overwrite = True )
+                
+                
+                
+                cat_rd = wcs.pixel_to_world(cat['x'], cat['y'])
+                
+                if epoch == 1:
+                    center = SkyCoord(ra = np.mean(cat_rd.ra.value), dec = np.mean(cat_rd.dec.value),
+                                      unit = 'degree', frame = 'icrs')
+                
+                cat['ra'] = cat_rd.ra
+                cat['dec'] = cat_rd.dec
+                
+                cat['x'] = cat['x']+1 # This +1 is just to make the region file.
+                cat['y'] = cat['y']+1
+                
+                
+                limH = 14
+                brig_m = cat[f'{b_name}'] < limH
+                
+                
+                region(cat[brig_m][0:1], 'x', 'y',
+                       name = f'Bright_{b_name}{limH}_{zone}_Ep{epoch}_stars_xy',
+                       save_in = pruebas,
+                       wcs = 'physical',
+                       color = 'green',
+                       marker = 'circulos',
+                       radio = 1.3)
+                region(cat[0:1], 'x', 'y',
+                       name = f'{zone}_Ep{epoch}_stars_xy_0.5s',
+                       save_in = pruebas,
+                       wcs = 'physical',
+                       color = 'cyan',
+                       marker = 'cross')
+                
+                # stop(212)
+                cat['x'] = cat['x']-1 
+                cat['y'] = cat['y']-1
+                
+                cat['x'] = cat['x']*pixSca # These are arcsec
+                cat['y'] = cat['y']*pixSca
+                
+                cat['sx'] = cat['sx']*pixSca # These are arcsec
+                cat['sy'] = cat['sy']*pixSca
+                
+                cat['sxy'] = np.sqrt(cat['sx']**2 + cat['sy']**2)
+                cat = cat[cat['sxy'] > 0]
             
             fig, (ax, ax2) = plt.subplots(1,2, figsize = (12,6))
             ax2.set_title(f'Epoch{epoch} ZP = {ZP: .3f}')
@@ -644,13 +657,28 @@ for zone in zones:
             wcs='fk5',
             scale=1
         )
+        
+        region_vectors(
+            table=gaia_m,
+            ra_col='ra',
+            dec_col='dec',
+            pmra_col='pm_x',
+            pmdec_col='pm_y',
+            name=f'gaia_{zone}_f{band}_vec',
+            save_in = tmp1,
+            color='red',
+            wcs='fk5',
+            scale=1,
+            width = 5
+        )
         # %%
         look_for_cluster  = 'yes'
         if look_for_cluster == 'yes':
             
            
-            # modes = ['pm_xy_color']
-            modes = ['pm_xy']
+            
+            modes = ['pm_xy_color']
+            # modes = ['pm_xy']
             knn = 10
             gen_sim = 'kernnel'
             sim_lim ='minimun'
@@ -660,7 +688,7 @@ for zone in zones:
                                          'x', 'y', 
                                          'ra', 'dec',
                                          modes[0],
-                                         f'{b_name}',f'{b_name}',
+                                         'J','H',
                                          knn,gen_sim,sim_lim, save_reg = tmp1)
            
         #     elif destination == 1:

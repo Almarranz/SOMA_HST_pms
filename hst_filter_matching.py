@@ -58,10 +58,14 @@ folder = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability
 # results = ''
 zone = 'G032.03+00.05'
 # zone = 'G028.20-00.05'
-# zones = [ 'AFGL5180','G028.20-00.05', 'G032.03+00.05', 'G35.2-0.74N', 'G339.88-01.26','IRAS07299-1651', 'IRAS16562-3959']
+zones = [ 'AFGL5180','G028.20-00.05', 'G032.03+00.05', 'G35.2-0.74N', 'G339.88-01.26','IRAS07299-1651', 'IRAS16562-3959']
 # zones = [ 'IRAS16562-3959']
-zones = ['G032.03+00.05']
-band_ls = ['160w', '110w']
+# zones = ['G032.03+00.05']
+
+# band_ls = ['160w', '110w']
+# names_ls = ['H', 'J']
+band_ls = ['160w', '128n']
+names_ls = ['H', 'Paβ']
 
 
 
@@ -136,7 +140,7 @@ lopping = 1
 # for loop in range(1):
 wloop_counter = 0
 # ZP = 25 # INVENTED
-for zone in zones:
+for zone in zones[4:5]:
     
     for epoch in range(1,3):
         
@@ -155,10 +159,10 @@ for zone in zones:
                 b_name = 'H'
             elif band == '110w':
                 b_name = 'J'
-            # elif band == '128n':
-            #     b_name = 'Paβ'
-            # elif band == '164N':
-            #     b_name = 'Fe II'
+            elif band == '128n':
+                b_name = 'Paβ'
+            elif band == '164N':
+                b_name = 'Fe II'
         
             pruebas = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/pruebas/'
             tmp1 = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band}/epoch1/tmp/'
@@ -170,6 +174,7 @@ for zone in zones:
             
             results = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band}/epoch{epoch}/'
             cat = Table.read(results + f'hst_{zone}_epoch{epoch}_stars_f{band}.txt', format = 'ascii')
+        
             pattern = folder + f"{zone}/epoch{epoch}/hst_*f{band}*"
             
             ima_name = os.path.basename(glob(pattern)[0])
@@ -255,15 +260,15 @@ for zone in zones:
             
             
             cat_dic[f'{b_name}'] = cat
-            
+        
 # %%
             
 
-        cat1 = cat_dic['H']
-        cat1['J'] = 99.9999
-        cat1['dJ'] = 99.9999
+        cat1 = cat_dic[f'{names_ls[0]}']
+        cat1[f'{names_ls[1]}'] = 99.9999
+        cat1[f'd{names_ls[1]}'] = 99.9999
         
-        cat2 = cat_dic['J']
+        cat2 = cat_dic[f'{names_ls[1]}']
         
         crd1 = SkyCoord(ra = cat1['ra'], dec = cat1['dec'], unit = 'degree', frame = 'fk5')
         crd2 = SkyCoord(ra = cat2['ra'], dec = cat2['dec'], unit = 'degree', frame = 'fk5')
@@ -277,14 +282,14 @@ for zone in zones:
         unicos = unique(cat1_m, keep = 'first')
         print(len(cat1_m),len(unicos))
         print(40*'+')
-        cat1['J'][match_mask] = cat2[idx[match_mask]]['J']
-        cat1['dJ'][match_mask] = cat2[idx[match_mask]]['dJ']
+        cat1[f'{names_ls[1]}'][match_mask] = cat2[idx[match_mask]]['J']
+        cat1[f'd{names_ls[1]}'][match_mask] = cat2[idx[match_mask]]['dJ']
         
         
         
         color_l = 2
-        b_name1 = 'H'
-        b_name2 = 'J'
+        b_name1 = f'{names_ls[0]}'
+        b_name2 = f'{names_ls[1]}'
         fig, ax = plt.subplots(1,1, figsize =(4,4)) 
         ax.set_title(f'{zone} \u2605 = {len(cat1_m)}')
         # h = ax.hexbin(cat2_m[b_name2] - cat1_m[b_name1], cat1_m[b_name1], norm = LogNorm(),cmap = 'viridis' )
@@ -306,9 +311,42 @@ for zone in zones:
         print("Rotation: %.0f arcmin"%(p.rotation * 180.0/np.pi*60)) 
         print("Rotation: %.3f arcsec"%(p.rotation * 180.0/np.pi*3600)) 
         
-        cat1.write(results + f'hst_{zone}_epoch{epoch}_HJ.txt', format = 'ascii', overwrite = True)
-        
-                                       
-    # stop(270)
-        # %%
+        comb_f = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band_ls[0]}/epoch{epoch}/'
+        cat1.write(comb_f + f'hst_{zone}_epoch{epoch}_{names_ls[0]}{names_ls[1]}.txt', format = 'ascii', overwrite = True)
+# %%
+
+ep1_f = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band_ls[0]}/epoch1/'
+ep1 = Table.read(ep1_f + f'hst_{zone}_epoch1_{names_ls[0]}{names_ls[1]}.txt', format = 'ascii')
+ep2_f = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band_ls[0]}/epoch2/'
+ep2 = Table.read(ep2_f + f'hst_{zone}_epoch2_{names_ls[0]}{names_ls[1]}.txt', format = 'ascii')
+
+
+fig, ax = plt.subplots(1,1)
+ax.scatter(ep1['xp'], ep1['yp'],)
+ax.scatter(ep2['xp'], ep2['yp'],s=0.2)
+# ax.scatter(ep1['ra'], ep1['dec'],)
+# ax.scatter(ep2['ra'], ep2['dec'],s=0.2)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     

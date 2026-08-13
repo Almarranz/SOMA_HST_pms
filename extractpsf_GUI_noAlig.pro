@@ -9,11 +9,16 @@ PRO EXTRACTPSF_GUI_noAlig, zone, filter, epoch
 ;   filter = '160w'
 ;   filter = '110w'
 ;   filter = '128n'
+;   filter = '164n'
 ;   epoch = '1'
-epochs = ['1', '2']
-filters = ['160w', '110w']
+; epochs = ['1', '2']
+epochs = ['1']
+; filters = ['160w', '110w']
+; filters = ['128n', '164n']
+filters = ['128n']
 
-zones = [ 'AFGL5180','G028.20-00.05', 'G032.03+00.05', 'G35.2-0.74N', 'G339.88-01.26','IRAS07299-1651', 'IRAS16562-3959']
+; zones = [ 'AFGL5180','G028.20-00.05', 'G032.03+00.05', 'G35.2-0.74N', 'G339.88-01.26','IRAS07299-1651', 'IRAS16562-3959']
+zones = [ 'G339.88-01.26']
 
 
 FOR z = 0, N_ELEMENTS(zones)-1 DO BEGIN
@@ -57,7 +62,8 @@ FOR z = 0, N_ELEMENTS(zones)-1 DO BEGIN
         ;   x_psf = [464L, 578L, 1146L, 298L, 557L, 452L, 672L, 873L, 464L, 564L]
         ;   y_psf = [814L, 901L, 750L, 712L, 490L, 191L, 649L, 795L, 411L, 1104L]
            
-          threshold = 5. * median(noise[where(noise gt 0)])
+;           threshold = 5. * median(noise[where(noise gt 0)])
+          threshold = 1. * median(noise[where(noise gt 0)])
           back_box = 21
           background = estimate_background(im,back_box)
           search_objects, im, LOW_SURFACE = background, threshold, $
@@ -67,6 +73,7 @@ FOR z = 0, N_ELEMENTS(zones)-1 DO BEGIN
           x_psf = x[good]
           y_psf = y[good]
           f_psf = f[good]
+;           ZP = 25
           ZP = 25
           mag = ZP - 2.5 * alog10(f_psf)
           ord = sort(mag)

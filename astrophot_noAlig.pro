@@ -9,8 +9,10 @@ PRO ASTROPHOT_noAlig, zone, filter, epoch
 ; epoch = '2'
 epochs = ['1', '2']
 filters = ['160w', '110w']
+; filters = ['128n', '164n']
 
-zones = [ 'AFGL5180','G028.20-00.05', 'G032.03+00.05', 'G35.2-0.74N', 'G339.88-01.26','IRAS07299-1651', 'IRAS16562-3959']
+; zones = [ 'AFGL5180','G028.20-00.05', 'G032.03+00.05', 'G35.2-0.74N', 'G339.88-01.26','IRAS07299-1651', 'IRAS16562-3959']
+zones = [ 'G339.88-01.26']
 
 
 FOR z = 0, N_ELEMENTS(zones)-1 DO BEGIN

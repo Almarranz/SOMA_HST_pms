@@ -68,6 +68,7 @@ for zone in zones:
     # band = '160w'
     band1 = '110w'
     band2 = '160w'
+    band3 = '128n'
     # band = '128n'
     # epoch = 2
     if band1 == '160w':
@@ -96,16 +97,20 @@ for zone in zones:
     pruebas = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/pruebas/'
     tmp1 = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band1}/'
     tmp2 = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band2}/'
+    tmp3 = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band3}/'
     
     
     
     cat1 = Table.read(tmp1 +  f'pm_{zone}_{band1}_posEpo1.txt', format = 'ascii')
     cat2 = Table.read(tmp2 +  f'pm_{zone}_{band2}_posEpo1.txt', format = 'ascii')
+    cat3 = Table.read(tmp3 +  f'pm_{zone}_{band3}_posEpo1.txt', format = 'ascii')
+
     
     
     
     crd1 = SkyCoord(ra = cat1['ra'], dec = cat1['dec'], unit = 'degree', frame = 'fk5')
     crd2 = SkyCoord(ra = cat2['ra'], dec = cat2['dec'], unit = 'degree', frame = 'fk5')
+    crd3 = SkyCoord(ra = cat3['ra'], dec = cat3['dec'], unit = 'degree', frame = 'fk5')
     
     
     idx, d2d, _ = crd1.match_to_catalog_sky(crd2, nthneighbor=1)
@@ -117,7 +122,6 @@ for zone in zones:
     print(len(cat1_m),len(unicos))
     print(40*'+')
     
-    # %%
     clust = os.path.exists(tmp1 +'clust_0.')
     
     fig, ax = plt.subplots(1,1, figsize =(4,4)) 
@@ -145,10 +149,32 @@ for zone in zones:
            save_in=pruebas,wcs='fk5',color= 'cyan',
            marker = 'circle')
     
+# %%
     
+# =============================================================================
+#     Color-Color digram
+# =============================================================================
     
+
+    # max_sep = 0.1 * u.arcsec  # choose an appropriate matching radius
     
+    # Match 110W -> 160W
+    idx12, d12, _ = crd2.match_to_catalog_sky(crd1)
+    m12 = d12 < max_sep
     
+    # Match 128N -> 160W
+    idx32, d32, _ = crd2.match_to_catalog_sky(crd3)
+    m32 = d32 < max_sep
+    
+    # Stars detected in all three bands
+    good = m12 & m32
+    
+    cat160 = cat2[good]
+    cat110 = cat1[idx12[good]]
+    cat128 = cat3[idx32[good]]
+    
+    # col1 = cat110[''] - cat160['mag']    # F110W - F160W
+    # col2 = cat['mag'128['mag'] - cat160['mag']   # F128N0W
     
     
     
