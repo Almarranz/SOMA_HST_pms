@@ -1,9 +1,12 @@
 PRO EXTRACTPSF_noAlig, zone, filter, epoch
 
 
-zone = 'G028.20-00.05'
-filter = '160w'
+zone = 'G339.88-01.26'
+filter = '128n'
 epoch = '1'
+; zone = 'G028.20-00.05'
+; filter = '160w'
+; epoch = '1'
 
 
 ; base = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/G028.20-00.05/epoch1/'
@@ -17,7 +20,7 @@ paths = FILE_SEARCH(pattern, /TEST_DIRECTORY)
 path = paths + '/'
 
 pruebas = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/pruebas/'
-tmpdir = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/'+ zone +'/f'+ filter +'_noAlig/epoch'+ epoch +'/tmp/'
+tmpdir = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/' + zone + '/F' + filter + '/epoch' + epoch + '/tmp/'
 results = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/'+ zone +'/f'+ filter +'_noAlig/epoch'+ epoch +'/'
 
 

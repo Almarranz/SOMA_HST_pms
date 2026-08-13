@@ -59,11 +59,11 @@ folder = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability
 # results = ''
 # zone = 'G032.03+00.05'
 # zone = 'G028.20-00.05'
-zones = [ 'AFGL5180','G028.20-00.05', 'G032.03+00.05', 'G35.2-0.74N', 'G339.88-01.26','IRAS07299-1651', 'IRAS16562-3959']
-# zones = [ 'IRAS07299-1651']
+# zones = [ 'AFGL5180','G028.20-00.05', 'G032.03+00.05', 'G35.2-0.74N', 'G339.88-01.26','IRAS07299-1651', 'IRAS16562-3959']
+zones = ['G339.88-01.26']
 color_l = 1
 # zone = zones[2]
-
+epoch = 1
 for zone in zones:
     # band = '160w'
     band1 = '110w'
@@ -87,6 +87,14 @@ for zone in zones:
         b_name2 = 'Paβ'
     elif band2 == '164N':
         b_name2 = 'Fe II'
+    if band3 == '160w':
+        b_name3 = 'H'
+    elif band3 == '110w':
+        b_name3 = 'J'
+    elif band3 == '128n':
+        b_name3 = 'Paβ'
+    elif band3 == '164N':
+        b_name3 = 'Fe II'
         
     # =============================================================================
     # Alig Para
@@ -99,12 +107,17 @@ for zone in zones:
     tmp2 = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band2}/'
     tmp3 = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band3}/'
     
-    
-    
-    cat1 = Table.read(tmp1 +  f'pm_{zone}_{band1}_posEpo1.txt', format = 'ascii')
-    cat2 = Table.read(tmp2 +  f'pm_{zone}_{band2}_posEpo1.txt', format = 'ascii')
-    cat3 = Table.read(tmp3 +  f'pm_{zone}_{band3}_posEpo1.txt', format = 'ascii')
+    results1 = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band1}/epoch{epoch}/'
+    results2 = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band2}/epoch{epoch}/'
+    results3 = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band3}/epoch{epoch}/'
 
+    # cat.write(results + f'calib_{zone}_EP{epoch}_f{band}.txt', format = 'ascii', overwrite = True )
+
+    
+    
+    cat1 = Table.read(results1 +  f'calib_{zone}_EP{epoch}_f{band1}.txt', format = 'ascii')
+    cat2 = Table.read(results2 +  f'calib_{zone}_EP{epoch}_f{band2}.txt', format = 'ascii')
+    cat3 = Table.read(results3 +  f'calib_{zone}_EP{epoch}_f{band3}.txt', format = 'ascii')
     
     
     
@@ -152,7 +165,7 @@ for zone in zones:
 # %%
     
 # =============================================================================
-#     Color-Color digram
+#     Color-Color diagram
 # =============================================================================
     
 
@@ -169,14 +182,28 @@ for zone in zones:
     # Stars detected in all three bands
     good = m12 & m32
     
-    cat160 = cat2[good]
-    cat110 = cat1[idx12[good]]
-    cat128 = cat3[idx32[good]]
+    cat2m = cat2[good]
+    cat1m = cat1[idx12[good]]
+    cat3m = cat3[idx32[good]]
     
     # col1 = cat110[''] - cat160['mag']    # F110W - F160W
     # col2 = cat['mag'128['mag'] - cat160['mag']   # F128N0W
     
+    fig, ax = plt.subplots(1,1, figsize =(4,4)) 
+    ax.set_title(f'{zone} \u2605 = {len(cat2m)}')
+    # h = ax.hexbin(cat1m[b_name1] - cat2m[b_name2], cat3m[b_name3] - cat2m[b_name2], norm = LogNorm(),cmap = 'viridis' )
+    h = ax.hexbin(cat1m[b_name1] - cat2m[b_name2], cat3m[b_name3] - cat2m[b_name2], norm = LogNorm(), gridsize = (10,10),cmap = 'viridis' )
+    cbar = plt.colorbar(h, ax=ax, aspect = 40)
     
+    
+    # h = ax.hist2d(cat1m[b_name1] - cat2m[b_name2], cat3m[b_name3] - cat2m[b_name2], norm = LogNorm(), bins = (20,20))
+    # cbar = plt.colorbar(h[3], ax=ax, aspect = 40)
+    
+    # ax.axvline(color_l, color = 'red', ls = 'dashed',label = f'J-H = {color_l}')
+    ax.invert_yaxis()
+    ax.set_xlabel(f'{b_name1} - {b_name2}')
+    ax.set_ylabel(f'{b_name3} - {b_name2}')
+    ax.legend() 
     
     
     

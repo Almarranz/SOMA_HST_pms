@@ -19,7 +19,6 @@ from compare_lists import compare_lists
 from astropy.stats import sigma_clip
 from alignator_gaia import alig_gaia
 from astropy.table import unique
-import gns_cluster_finder
 from filters import filter_hst_data
 from astropy.modeling.models import Polynomial2D
 from astropy.modeling.fitting import LinearLSQFitter
@@ -65,7 +64,10 @@ band_ls = ['160w']
 # =============================================================================
 # Matching Lists
 # =============================================================================
-matching_lists = 1#!!!
+matching_lists = 1#!!! If you want to use matched lists with two different magnitudes make it 1 (see hst_filter_matching.py)
+# matching_band = 'Paβ'
+matching_band = 'J'
+
 
 
 # =============================================================================
@@ -127,13 +129,13 @@ isolation_radius = 0.7#arcsec isolation of the grid stars
 # ===========================================================================
 max_dis_pm = 0.150#in arcsec
 sig_H = 3# discrd pm for stars with delta H over sig_H
-e_pm_cat = 20# im mas/yr
+e_pm_cat = 0.5# im mas/yr
 d_pm = 150*u.mas
 # =============================================================================
 # CLUSTERS
 # =============================================================================
-look_for_cluster = 'no'
-# look_for_cluster = 'yes'
+# look_for_cluster = 'no'
+look_for_cluster = 'yes'
 
 # =============================================================================
 # Dictionaries
@@ -185,11 +187,13 @@ for zone in zones[0+sigu:1+sigu]:
                 results = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band}/epoch{epoch}/'
                 if not matching_lists:
                     cat = Table.read(results + f'hst_{zone}_epoch{epoch}_stars_f{band}.txt', format = 'ascii')
+                    cat['id'] = np.arange(1,len(cat)+1)
                 if matching_lists:
-                    cat = Table.read(results + f'hst_{zone}_epoch{epoch}_HJ.txt', format = 'ascii')
+                    # cat = Table.read(results + f'hst_{zone}_epoch{epoch}_HJ.txt', format = 'ascii')
+                    cat = Table.read(results + f'hst_{zone}_epoch{epoch}_H{matching_band}.txt', format = 'ascii')
                     cat['ra'].unit = 'deg'
                     cat['dec'].unit = 'deg'
-                    mask_hj = cat['J'] < 99
+                    mask_hj = cat[f'{matching_band}'] < 99
                     cat = cat[mask_hj]
                 pattern = folder + f"{zone}/epoch{epoch}/hst_*f{band}*"
                 
@@ -483,7 +487,8 @@ for zone in zones[0+sigu:1+sigu]:
         cat2_mi['dpm_y']  = dpm_y
         
         # %%
-        
+        cat2_mi = filter_hst_data(cat2_mi, max_e_pos = e_pm_cat)
+        cat1_mi = filter_hst_data(cat1_mi, max_e_pos = e_pm_cat)
         
         fig, (ax,ax2) = plt.subplots(1,2, figsize = (7,3.5))
         ax.set_title(f'[{b_name}], {zone}')
@@ -672,33 +677,33 @@ for zone in zones[0+sigu:1+sigu]:
             width = 5
         )
         # %%
-        look_for_cluster  = 'yes'
-        if look_for_cluster == 'yes':
-            
-           
-            
-            modes = ['pm_xy_color']
-            # modes = ['pm_xy']
-            knn = 10
-            gen_sim = 'kernnel'
-            sim_lim ='minimun'
-            # sim_lim ='mean'
         
-            clus_dic = cluster_finder.finder(cat1_mi, 'pm_x', 'pm_y',
-                                         'x', 'y', 
-                                         'ra', 'dec',
-                                         modes[0],
-                                         'J','H',
-                                         knn,gen_sim,sim_lim, save_reg = tmp1)
-           
-        #     elif destination == 1:
-        #         clus_dic = gns_cluster_finder.finder(gns1_mpm['pm_x'], gns1_mpm['pm_y'],
-        #                                      gns1_mpm['xp'], gns1_mpm['yp'], 
-        #                                      gns1_mpm['l'].value, gns1_mpm['b'].value,
-        #                                      modes[0],
-        #                                      gns1_mpm['H'],gns1_mpm['H'],
-        #                                      knn,gen_sim,sim_lim, save_reg = pruebas1)
-        # # %%
+    if look_for_cluster == 'yes':
+        
+       
+        
+        modes = ['pm_xy_color']
+        # modes = ['pm_xy']
+        knn = 15
+        gen_sim = 'kernnel'
+        sim_lim ='minimun'
+        # sim_lim ='mean'
+    
+        clus_dic = cluster_finder.finder(cat1_mi, 'pm_x', 'pm_y',
+                                     'x', 'y', 
+                                     'ra', 'dec',
+                                     modes[0],
+                                     f'{matching_band}','H',
+                                     knn,gen_sim,sim_lim, save_reg = None)
+       
+            #     elif destination == 1:
+            #         clus_dic = gns_cluster_finder.finder(gns1_mpm['pm_x'], gns1_mpm['pm_y'],
+            #                                      gns1_mpm['xp'], gns1_mpm['yp'], 
+            #                                      gns1_mpm['l'].value, gns1_mpm['b'].value,
+            #                                      modes[0],
+            #                                      gns1_mpm['H'],gns1_mpm['H'],
+            #                                      knn,gen_sim,sim_lim, save_reg = pruebas1)
+            # # %%
         
         
         # =============================================================================

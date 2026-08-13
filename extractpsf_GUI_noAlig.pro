@@ -11,14 +11,17 @@ PRO EXTRACTPSF_GUI_noAlig, zone, filter, epoch
 ;   filter = '128n'
 ;   filter = '164n'
 ;   epoch = '1'
-; epochs = ['1', '2']
-epochs = ['1']
+epochs = ['1', '2']
+; epochs = ['1']
+filters = ['160w', '110w', '128n', '164n']
+
 ; filters = ['160w', '110w']
 ; filters = ['128n', '164n']
-filters = ['128n']
+; filters = ['128n']
+; filters = ['160w']
 
-; zones = [ 'AFGL5180','G028.20-00.05', 'G032.03+00.05', 'G35.2-0.74N', 'G339.88-01.26','IRAS07299-1651', 'IRAS16562-3959']
-zones = [ 'G339.88-01.26']
+zones = [ 'AFGL5180','G028.20-00.05', 'G032.03+00.05', 'G35.2-0.74N', 'G339.88-01.26','IRAS07299-1651', 'IRAS16562-3959']
+; zones = [ 'G339.88-01.26']
 
 
 FOR z = 0, N_ELEMENTS(zones)-1 DO BEGIN
@@ -51,6 +54,10 @@ FOR z = 0, N_ELEMENTS(zones)-1 DO BEGIN
           ; HST drizzled image: SCI is extension 1, WHT is extension 2.
           im = READFITS(filename, header_sci, EXT=1)
           noise = READFITS(filename, header_wht, EXT=2)
+          
+          good = where(FINITE(im),complement=isnan)
+          im[isnan] = 0
+          noise = sqrt(im)
           ; NOTE: for this product WHT is an effective-exposure/weight map, not a
           ; per-pixel noise standard-deviation map.  PSF_EXTRACT does not use it;
           ; it is read and saved here as requested for downstream use.
@@ -63,8 +70,14 @@ FOR z = 0, N_ELEMENTS(zones)-1 DO BEGIN
         ;   y_psf = [814L, 901L, 750L, 712L, 490L, 191L, 649L, 795L, 411L, 1104L]
            
 ;           threshold = 5. * median(noise[where(noise gt 0)])
-          threshold = 1. * median(noise[where(noise gt 0)])
+;           threshold = .1 * median(noise[where(noise gt 0)])
+
+          
           back_box = 21
+          background = estimate_background(im,back_box)
+          resid = im - background
+          sigma = stddev(resid)
+          threshold = 3.0*sigma
           background = estimate_background(im,back_box)
           search_objects, im, LOW_SURFACE = background, threshold, $
                           PRE_SMOOTH = 1, MINIF = 2, $ ;THIS WAS CHANGED PRE_SMOOTH AND MINIF. DEFAULTS WERE 1 AND 2.

@@ -62,10 +62,11 @@ zones = [ 'AFGL5180','G028.20-00.05', 'G032.03+00.05', 'G35.2-0.74N', 'G339.88-0
 # zones = [ 'IRAS16562-3959']
 # zones = ['G032.03+00.05']
 
-# band_ls = ['160w', '110w']
-# names_ls = ['H', 'J']
-band_ls = ['160w', '128n']
-names_ls = ['H', 'Paβ']
+band_ls = ['160w', '110w']
+names_ls = ['H', 'J']
+
+# band_ls = ['160w', '128n']
+# names_ls = ['H', 'Paβ']
 
 
 
@@ -140,7 +141,8 @@ lopping = 1
 # for loop in range(1):
 wloop_counter = 0
 # ZP = 25 # INVENTED
-for zone in zones[4:5]:
+# for zone in zones[4:5]:
+for zone in zones:
     
     for epoch in range(1,3):
         
@@ -174,6 +176,7 @@ for zone in zones[4:5]:
             
             results = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band}/epoch{epoch}/'
             cat = Table.read(results + f'hst_{zone}_epoch{epoch}_stars_f{band}.txt', format = 'ascii')
+            cat['id'] = np.arange(1,len(cat)+1)
         
             pattern = folder + f"{zone}/epoch{epoch}/hst_*f{band}*"
             
@@ -194,9 +197,10 @@ for zone in zones[4:5]:
             cat[f'{b_name}'] =  (-2.5*np.log10(cat['f']) + ZP).round(4)
             cat[f'd{b_name}'] = ((2.5 / np.log(10)) * (cat['sf'] / cat['f'])).round(4)
             
-            # cat.write(results + f'calib_{zone}_EP{epoch}_f{band}_drz_sci_stars{band}.txt', format = 'ascii', overwrite = True )
             
-            
+            print(30*"=")
+            print(results)
+            print(30*"=")
             
             cat_rd = wcs.pixel_to_world(cat['x'], cat['y'])
             
@@ -213,6 +217,10 @@ for zone in zones[4:5]:
             
             cat['sxy'] = np.sqrt(cat['sx']**2 + cat['sy']**2)
             # cat = cat[cat['sxy'] > 0]
+            
+            cat.write(results + f'calib_{zone}_EP{epoch}_f{band}.txt', format = 'ascii', overwrite = True )
+
+            
             
             fig, (ax, ax2) = plt.subplots(1,2, figsize = (8,4))
             ax2.set_title(f'Epoch{epoch} ZP = {ZP: .3f}')
@@ -282,8 +290,8 @@ for zone in zones[4:5]:
         unicos = unique(cat1_m, keep = 'first')
         print(len(cat1_m),len(unicos))
         print(40*'+')
-        cat1[f'{names_ls[1]}'][match_mask] = cat2[idx[match_mask]]['J']
-        cat1[f'd{names_ls[1]}'][match_mask] = cat2[idx[match_mask]]['dJ']
+        cat1[f'{names_ls[1]}'][match_mask] = cat2[idx[match_mask]][f'{names_ls[1]}']
+        cat1[f'd{names_ls[1]}'][match_mask] = cat2[idx[match_mask]][f'd{names_ls[1]}']
         
         
         
@@ -293,7 +301,7 @@ for zone in zones[4:5]:
         fig, ax = plt.subplots(1,1, figsize =(4,4)) 
         ax.set_title(f'{zone} \u2605 = {len(cat1_m)}')
         # h = ax.hexbin(cat2_m[b_name2] - cat1_m[b_name1], cat1_m[b_name1], norm = LogNorm(),cmap = 'viridis' )
-        h = ax.hexbin(cat1['J'][cat1['J']<99] - cat1['H'][cat1['J']<99], cat1['H'][cat1['J']<99], norm = LogNorm(),cmap = 'viridis' )
+        h = ax.hexbin(cat1[f'{names_ls[1]}'][cat1[f'{names_ls[1]}']<99] - cat1[f'{names_ls[0]}'][cat1[f'{names_ls[1]}']<99], cat1[f'{names_ls[0]}'][cat1[f'{names_ls[1]}']<99], norm = LogNorm(),cmap = 'viridis' )
         cbar = plt.colorbar(h, ax=ax, aspect = 40)
         ax.axvline(color_l, color = 'red', ls = 'dashed',label = f'{b_name2} - {b_name1} = {color_l}')
         ax.invert_yaxis()
