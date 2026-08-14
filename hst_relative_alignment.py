@@ -85,7 +85,7 @@ e_pos_gaia = 0.5
 pixSca = 0.12825 #arcsec/pixel
 # pixSca = 0.00001 #arcsec/pixel#
 
-e_pos_cat  = 0.05# in arcsec. The position errors from starfinder lists are largely overstatimated!!!
+e_pos_cat  = 1# in arcsec. The position errors from starfinder lists are largely overstatimated!!!
 
 # red_techn = 'Gaia'
 red_techn = 'Original'
@@ -151,7 +151,7 @@ lopping = 1
 # for loop in range(1):
 wloop_counter = 0
 # ZP = 25 # INVENTED
-sigu = 4
+sigu = 0
 for zone in zones[0+sigu:1+sigu]:
 # for zone in zones:
 
@@ -684,7 +684,7 @@ for zone in zones[0+sigu:1+sigu]:
         
         modes = ['pm_xy_color']
         # modes = ['pm_xy']
-        knn = 15
+        knn = 7
         gen_sim = 'kernnel'
         sim_lim ='minimun'
         # sim_lim ='mean'
@@ -695,58 +695,16 @@ for zone in zones[0+sigu:1+sigu]:
                                      modes[0],
                                      f'{matching_band}','H',
                                      knn,gen_sim,sim_lim, save_reg = None)
-       
-            #     elif destination == 1:
-            #         clus_dic = gns_cluster_finder.finder(gns1_mpm['pm_x'], gns1_mpm['pm_y'],
-            #                                      gns1_mpm['xp'], gns1_mpm['yp'], 
-            #                                      gns1_mpm['l'].value, gns1_mpm['b'].value,
-            #                                      modes[0],
-            #                                      gns1_mpm['H'],gns1_mpm['H'],
-            #                                      knn,gen_sim,sim_lim, save_reg = pruebas1)
-            # # %%
+    
+# %%
+        
+
+    # clus_dic['clus_1'].write(tmp1 + f'clus1_H{matching_band}.txt', format = 'ascii', overwrite = True)
+    # clus_dic['clus_0'].write(tmp1 + f'clus0_H{matching_band}.txt', format = 'ascii', overwrite = True)
+         
+   
         
         
-        # =============================================================================
-        # # Hyper-velocity star
-        # # =============================================================================
-        
-        # hv = 25# We cosider hv if pm > 25 mas/yr (1000 km/s)
-        
-        # hv_mask = np.sqrt(gns1_mi['pm_x']**2 + gns1_mi['pm_y']**2) > hv
-        
-        # gns1_hv = gns1_mi[hv_mask]
-        # gns2_hv = gns2_mi[hv_mask]
-        
-        # gns1_hv['H2'] = gns2_hv['H']
-        # gns1_hv.write(pruebas1 +  f'HV_gns1_pmSuper_F1_{field_one}_F2_{field_two}.ecsv', format = 'ascii.ecsv', overwrite = True)
-        # print(gns1_hv['pm_x', 'pm_y','H', 'H2'])
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-
-
-
-
-
-
-
-
-
-
-
 
 
 

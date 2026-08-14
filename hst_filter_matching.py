@@ -62,11 +62,14 @@ zones = [ 'AFGL5180','G028.20-00.05', 'G032.03+00.05', 'G35.2-0.74N', 'G339.88-0
 # zones = [ 'IRAS16562-3959']
 # zones = ['G032.03+00.05']
 
-band_ls = ['160w', '110w']
-names_ls = ['H', 'J']
+# band_ls = ['160w', '110w']
+# names_ls = ['H', 'J']
 
 # band_ls = ['160w', '128n']
 # names_ls = ['H', 'Paβ']
+
+band_ls = ['160w', '164n']
+names_ls = ['H', 'Fe II']
 
 
 
@@ -163,7 +166,7 @@ for zone in zones:
                 b_name = 'J'
             elif band == '128n':
                 b_name = 'Paβ'
-            elif band == '164N':
+            elif band == '164n':
                 b_name = 'Fe II'
         
             pruebas = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/pruebas/'
