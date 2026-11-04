@@ -1,8 +1,8 @@
 PRO ASTROPHOT, zone, filter, epoch
 
-; zone = 'G028.20-00.05'
-; filter = '160w'
-; epoch = '1'
+zone = 'G028.20-00.05'
+filter = '160w'
+epoch = '1'
 ; path = '/Users/fedriani/Documents/postdoc_iaa/HST_project/HST_data/G028.20-00.05/gaia_alignment/Epoch1/starfinder/'
 path = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/'+ zone +'/gaia_alignment/Epoch'+ epoch +'/'
 pruebas = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/pruebas/'
@@ -92,11 +92,11 @@ print, nam
         LOGFILE = logfilename, /CUBIC, $
         XBAD = xbad, YBAD = ybad, POSBG = posbg
 
-  writefits, tmpdir + STRMID(nam,0,100) + '_stars'+filter+'.fits', stars, header
-  writefits, tmpdir + STRMID(nam,0,100) + '_bg'+filter+'.fits', background, header
-  writefits, tmpdir + STRMID(nam,0,100) + '_resid'+filter+'.fits', im-stars-background, header
+  writefits, tmpdir + STRMID(nam,0,100) + '_stars'+filter+'_ori.fits', stars, header
+  writefits, tmpdir + STRMID(nam,0,100) + '_bg'+filter+'_ori.fits', background, header
+  writefits, tmpdir + STRMID(nam,0,100) + '_resid'+filter+'_ori.fits', im-stars-background, header
   subtracted = im-stars
-  writefits, tmpdir + STRMID(nam,0,100) + '_subtracted'+filter+'.fits', subtracted, header
+  writefits, tmpdir + STRMID(nam,0,100) + '_subtracted'+filter+'_ori.fits', subtracted, header
   
 ;   writefits, path + STRMID(nam,3,100) + '_stars'+filter+'.fits', stars, header, /COMPRESS
 ;   writefits, path + STRMID(nam,3,100) + '_bg'+filter+'.fits', background, header, /COMPRESS

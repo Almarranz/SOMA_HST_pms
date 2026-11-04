@@ -60,13 +60,15 @@ folder = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability
 # results = ''
 # zone = 'G032.03+00.05'
 # zone = 'G028.20-00.05'
-# zones = [ 'AFGL5180','G028.20-00.05', 'G032.03+00.05', 'G35.2-0.74N', 'G339.88-01.26','IRAS07299-1651', 'IRAS16562-3959']
-zones = ['AFGL5180']
+zones = [ 'AFGL5180','G028.20-00.05', 'G032.03+00.05', 'G35.2-0.74N', 'G339.88-01.26','IRAS07299-1651', 'IRAS16562-3959']
+# zones = ['AFGL5180']
 color_l = None
 # zone = zones[2]
 epoch = 1
-for zone in zones:
-    # band = '160w'
+sigu = 5#!!!
+overplot_clus = 1
+for zone in zones[0+sigu:1+sigu]:
+    # band1 = '160w'
     band1 = '110w'
     band2 = '160w'
     band3 = '128n'
@@ -155,24 +157,60 @@ for zone in zones:
     ax.set_xlabel(f'{b_name1} - {b_name2}')
     ax.set_ylabel(f'{b_name2}')
    
+# =============================================================================
+#     Luminosity functions
+# =============================================================================
+    dic_cat = {f'{b_name1}':cat1, f'{b_name2}':cat2,f'{b_name3}':cat3,f'{b_name4}':cat4}
+    # fig, ax = plt.subplots(figsize =(8,4))
+    # ax.set_title(f'{zone}')
+    colorls = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', ]
+    for bn in range(0,4):
+        lumb = list(dic_cat.keys())[bn]
+        fig, ax = plt.subplots(figsize =(8,4))
+        ax.set_title(f'{zone}')
+        
+        num_bins = np.arange(11,23,0.2)
+        # Create the histogram
+        mag1 = dic_cat[f'{lumb}'][f'{lumb}']
+        counts1, bin_edges1 = np.histogram(mag1, bins=num_bins)
+        c1_mask = counts1 > 1
+        
+        bin_1 = (bin_edges1[:-1] + bin_edges1[1:]) / 2
+        
+        counts1 = counts1[c1_mask]
     
-   
-    if color_l is not None:
-        ax.axvline(color_l, color = 'red', ls = 'dashed',label = f'J-H = {color_l}')
+        bin_1 = bin_1[c1_mask]
+            
+        ax.plot(bin_1, counts1, marker = '.', label = f'{lumb}', color = colorls[bn])
+        
+        err1 = np.sqrt(counts1)
+        
+        ax.set_yscale('log')
+        
+        # Labeling the plot
+        ax.set_xlabel(f'[{lumb}]', fontsize = 15)
+        ax.set_ylabel('# stars',fontsize = 15)
         ax.legend()
-        mask_c = (cat1_m[b_name1] - cat2_m[b_name2]) > color_l
+        continue
+        # ax.errorbar(bin_1, counts1, yerr=err1, fmt='.', markersize=5, capsize=3,c ='#1f77b4' )
+        stop(161)
         
-        cat1_mC = cat1_m[mask_c]
-        cat1_NmC = cat1_m[np.logical_not(mask_c)]
+        if color_l is not None:
+            ax.axvline(color_l, color = 'red', ls = 'dashed',label = f'J-H = {color_l}')
+            ax.legend()
+            mask_c = (cat1_m[b_name1] - cat2_m[b_name2]) > color_l
+            
+            cat1_mC = cat1_m[mask_c]
+            cat1_NmC = cat1_m[np.logical_not(mask_c)]
+            
+            region(cat1_mC, 'ra', 'dec',
+                   name= f'{zone}_JH_gt{color_l}',
+                   save_in=pruebas,wcs='fk5', color = 'green', marker= 'cross')
+            region(cat1_NmC, 'ra', 'dec',
+                   name= f'{zone}_H-K_st{color_l}',
+                   save_in=pruebas,wcs='fk5',color= 'cyan',
+                   marker = 'circle')
         
-        region(cat1_mC, 'ra', 'dec',
-               name= f'{zone}_JH_gt{color_l}',
-               save_in=pruebas,wcs='fk5', color = 'green', marker= 'cross')
-        region(cat1_NmC, 'ra', 'dec',
-               name= f'{zone}_H-K_st{color_l}',
-               save_in=pruebas,wcs='fk5',color= 'cyan',
-               marker = 'circle')
-    
 # %%
     # =============================================================================
     # Select diagram type
@@ -330,8 +368,9 @@ for zone in zones:
             x,
             y,
             gridsize=(14,10),
-            norm=LogNorm(vmin=0.1),
-            cmap='Blues',
+            norm=LogNorm(),
+            # cmap='Blues',
+            cmap='cividis',
             edgecolor='grey',
             lw=0.1
         )
@@ -349,21 +388,22 @@ for zone in zones:
         # Overplot cluster members
         # =============================================================================
         
-        clus = Table.read(tmp2 + 'clus1_HJ.txt', format='ascii')
-        
-        mask = np.isin(cat2m['id'], clus['id'])
-        
-        ax.scatter(
-            x[mask],
-            y[mask],
-            color='lime',
-            marker='.',
-            s=50,
-            edgecolor = 'k',lw = 0.3,
-            label='DBSCAN cluster'
-        )
-        
-        ax.legend(loc=2)
+        if overplot_clus:
+            clus = Table.read(tmp2 + 'clus_0_HJ.txt', format='ascii')#!!!
+            
+            mask = np.isin(cat2m['id'], clus['id'])
+            
+            ax.scatter(
+                x[mask],
+                y[mask],
+                color='lime',
+                marker='.',
+                s=50,
+                edgecolor = 'k',lw = 0.3,
+                label=f'DBSCAN \u2605 = {len(clus)} '
+            )
+            
+            ax.legend(loc=2)
         
         plt.tight_layout()
         plt.show()

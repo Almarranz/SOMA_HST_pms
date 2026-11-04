@@ -21,7 +21,7 @@ filters = ['160w', '110w', '128n', '164n']
 ; filters = ['160w']
 
 zones = [ 'AFGL5180','G028.20-00.05', 'G032.03+00.05', 'G35.2-0.74N', 'G339.88-01.26','IRAS07299-1651', 'IRAS16562-3959']
-; zones = [ 'G339.88-01.26']
+; zones = [ 'G028.20-00.05']
 
 
 FOR z = 0, N_ELEMENTS(zones)-1 DO BEGIN
@@ -53,11 +53,17 @@ FOR z = 0, N_ELEMENTS(zones)-1 DO BEGIN
         
           ; HST drizzled image: SCI is extension 1, WHT is extension 2.
           im = READFITS(filename, header_sci, EXT=1)
-          noise = READFITS(filename, header_wht, EXT=2)
+;           noise = READFITS(filename, header_wht, EXT=2)
           
           good = where(FINITE(im),complement=isnan)
           im[isnan] = 0
-          noise = sqrt(im)
+;           noise = sqrt(im)
+;           Testing this new estimation of the noise
+          im_ext0 = readfits(filename,header0,EXT=0)
+          exp = sxpar(header0,'EXPTIME')
+          noise = sqrt(abs(im*exp))/exp
+          
+
           ; NOTE: for this product WHT is an effective-exposure/weight map, not a
           ; per-pixel noise standard-deviation map.  PSF_EXTRACT does not use it;
           ; it is read and saved here as requested for downstream use.

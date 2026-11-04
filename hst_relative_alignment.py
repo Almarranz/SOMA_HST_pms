@@ -41,6 +41,10 @@ import astroalign as aa
 from pyplots import plot_two_hists_sigma
 from pyplots import sig_cl
 from glob import glob
+from astropy.visualization import ImageNormalize, PercentileInterval, AsinhStretch,LogStretch
+import astropy.coordinates as ap_coor
+
+
 # %%plotting parametres
 from matplotlib import rc
 from matplotlib import rcParams
@@ -55,10 +59,11 @@ from matplotlib import rcParams
 
 folder = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/'
 # results = ''
-zone = 'G032.03+00.05'
+# zone = 'G032.03+00.05'
 # zone = 'G028.20-00.05'
-zones = [ 'AFGL5180','G028.20-00.05', 'G032.03+00.05', 'G35.2-0.74N', 'G339.88-01.26','IRAS07299-1651', 'IRAS16562-3959']
-# zones = ['G032.03+00.05']
+zones = [ 'AFGL5180','G028.20-00.05', 'G032.03+00.05', 'G339.88-01.26', 'G35.2-0.74N','IRAS07299-1651', 'IRAS16562-3959']
+# all_zones = [ 'AFGL5180','G028.20-00.05', 'G032.03+00.05', 'G339.88-01.26', 'G35.2-0.74N','IRAS07299-1651', 'IRAS16562-3959']
+
 band_ls = ['160w']
 
 # =============================================================================
@@ -73,11 +78,11 @@ matching_band = 'J'
 # =============================================================================
 # Gaia parametres
 # =============================================================================
-radius = 200*u.arcsec
+radius = 500*u.arcsec
 max_sep = 50*u.mas
-mag_gaia = [10,18]
-e_pm_gaia = 0.5
-e_pos_gaia = 0.5
+mag_gaia = [12,18]
+e_pm_gaia = 1
+e_pos_gaia = 1
 # =============================================================================
 # HST observation
 # =============================================================================
@@ -103,12 +108,12 @@ align_loop = 'yes'
 # align_loop = 'no'
 align = 'Polywarp'
 max_deg = 3# If this is <2 it does not enter the alignment loop. 
-max_loop = 3
+max_loop = 5
 # gaia_clipping = 'one_one'# Clipp the Gaia outlayer one by one
 gaia_clipping = 'all'# Clipp the Gaia outlayer all at once
 centered_in = 1
 destination = 1
-sig_cl_H = 30
+sig_cl_H = 3
 d_fa = 50*u.mas
 align_by = 'Polywarp'#!!!
 # align_by = '2DPoly'#!!!
@@ -129,7 +134,7 @@ isolation_radius = 0.7#arcsec isolation of the grid stars
 # ===========================================================================
 max_dis_pm = 0.150#in arcsec
 sig_H = 3# discrd pm for stars with delta H over sig_H
-e_pm_cat = 0.5# im mas/yr
+e_pm_cat = 2# im mas/yr
 d_pm = 150*u.mas
 # =============================================================================
 # CLUSTERS
@@ -151,8 +156,23 @@ lopping = 1
 # for loop in range(1):
 wloop_counter = 0
 # ZP = 25 # INVENTED
-sigu = 0
+sigu = 4#!!!
 for zone in zones[0+sigu:1+sigu]:
+# for msi, zone in enumerate(zones):
+    
+    mainstars = Table.read('/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/MainStarsReg/main_stars.txt', format = 'ascii')
+    # mstar = mainstars[sigu]
+    mstar = mainstars[mainstars['Target'] == zone]
+    
+    
+    # =============================================================================
+    # # Modeled pm
+    # =============================================================================
+    modpm = Table.read(folder + 'MainStarsReg/SOMA_HST_Reid_table.ecsv')
+    modst = modpm[modpm['Target'] == zone]
+    print(30*'ƒ')
+    print(modst['pmra_model','pmdec_model'])
+    print(30*'ƒ')
 # for zone in zones:
 
     for band in band_ls:
@@ -201,15 +221,63 @@ for zone in zones[0+sigu:1+sigu]:
                 ima = fits.open(glob(pattern)[0] + f'/{ima_name}_drz.fits')
                 wcs = WCS(ima[1].header)
                 scale_pix = np.sqrt(ima[1].header['CD1_1']**2 + ima[1].header['CD2_1']**2 )*3600
+#
+                if epoch == 1:
+                    figI = plt.figure()
+                    axI = figI.add_subplot(111, projection=wcs)
+                    axI.set_title(f'{zone}')
+                    normP = ImageNormalize(
+                        ima[1].data,
+                        interval=PercentileInterval(99.5),
+                        stretch=LogStretch()
+                        # stretch=AsinhStretch()
+                        
+                    )
+                    axI.imshow(
+                        ima[1].data,
+                        origin='lower',
+                        cmap='gray',
+                        norm=normP
+                    )
+                    msco = SkyCoord(
+                    mstar['RA'],
+                    mstar['Dec'],
+                    unit=(u.hourangle, u.deg)
+                    )
+                     
+                    axI.scatter(
+                    msco.ra.deg,
+                    msco.dec.deg,
+                    transform=axI.get_transform('world'),
+                    marker='o',
+                    s=200,
+                    color = 'cyan',
+                    facecolor = 'none',
+                    zorder=3,
+                    label = f'Ms {mstar["Target"]}'
+                    )
+                    axI.legend()
+                    
+                
+                    plt.show()
+                    plt.close(figI)
+            # plt.subplot(projection=wcs) 
+            # # plt.imshow(ima[1].data, origin='lower', cmap = 'grey', norm =LogNorm(vmin =0.01, vmax = 10))  
+            # plt.grid(color='white', ls='solid')
+            # plt.show()
+            # stop()
+# %%
             
-            print(pixSca, scale_pix)
+
+                
+            # print(pixSca, scale_pix)
         # =============================================================================
         #         ZP calculation
         # =============================================================================
             mjd = ima[0].header['EXPSTART']
             ZP = get_vegazp(mjd, band = f'f{band}')
             print(ZP)
-        
+            # continue
         
             cat[f'{b_name}'] =  (-2.5*np.log10(cat['f']) + ZP).round(4)
             cat[f'd{b_name}'] = ((2.5 / np.log(10)) * (cat['sf'] / cat['f'])).round(4)
@@ -228,22 +296,28 @@ for zone in zones[0+sigu:1+sigu]:
                 cat['ra'] = cat_rd.ra
                 cat['dec'] = cat_rd.dec
                 
+                
+                
                 cat['x'] = cat['x']+1 # This +1 is just to make the region file.
                 cat['y'] = cat['y']+1
                 
+                cat['x0'] = cat['x'] # This +1 is just to make the region file.
+                cat['y0'] = cat['y']
                 
-                limH = 14
-                brig_m = cat[f'{b_name}'] < limH
                 
                 
-                region(cat[brig_m][0:1], 'x', 'y',
+                limH = 20
+                brig_m = cat[f'{b_name}'] > limH
+                
+                
+                region(cat[brig_m], 'x', 'y',
                        name = f'Bright_{b_name}{limH}_{zone}_Ep{epoch}_stars_xy',
                        save_in = pruebas,
                        wcs = 'physical',
                        color = 'green',
                        marker = 'circulos',
                        radio = 1.3)
-                region(cat[0:1], 'x', 'y',
+                region(cat, 'x', 'y',
                        name = f'{zone}_Ep{epoch}_stars_xy_0.5s',
                        save_in = pruebas,
                        wcs = 'physical',
@@ -262,7 +336,7 @@ for zone in zones[0+sigu:1+sigu]:
                 
                 cat['sxy'] = np.sqrt(cat['sx']**2 + cat['sy']**2)
                 cat = cat[cat['sxy'] > 0]
-            
+                
             fig, (ax, ax2) = plt.subplots(1,2, figsize = (12,6))
             ax2.set_title(f'Epoch{epoch} ZP = {ZP: .3f}')
             ax.set_title(f'{zone} {b_name}')
@@ -290,6 +364,7 @@ for zone in zones[0+sigu:1+sigu]:
         
         cat1 = cat_dic['cat1'] 
         cat2 = cat_dic['cat2'] 
+       
         # %%
         fig, ax = plt.subplots(1,1)
         ax.set_title(f'{zone} {b_name}')
@@ -347,9 +422,11 @@ for zone in zones[0+sigu:1+sigu]:
         cat2_match = cat2[idx2_clean]
         
         
-        diff_H = cat2_match[f'{b_name}'] - cat1_match[f'{b_name}']
+        diff_H = cat1_match[f'{b_name}'] - cat2_match[f'{b_name}']
+        diff_dH = cat1_match[f'd{b_name}'] - cat2_match[f'd{b_name}']
         
-        fig, ax = plt.subplots(1,1,figsize = (7,7))
+        # fig, ax = plt.subplots(1,figsize = (7,7))
+        fig, (ax, ax2) = plt.subplots(1,2,figsize = (14,7))
         ax.set_title(f'{zone} {b_name}')
         ax.axhline(np.mean(diff_H), color = 'tab:orange', label = f'$\Delta H$ = {np.mean(diff_H): .2f} ')
         ax.axhline(np.mean(diff_H) + np.std(diff_H), ls = 'dashed' ,color = 'r', label = f'$\pm\sigma$ = {np.std(diff_H): .2f} ')
@@ -361,25 +438,55 @@ for zone in zones[0+sigu:1+sigu]:
         ax.set_ylabel(f'$\Delta {b_name}$', fontsize = 12)
         ax.set_xlabel(f'[{b_name}]', fontsize = 12)
         
-        var_m = (abs(diff_H) > 4) & (cat1_match[f'{b_name}'] < 20) 
+        # ax2.set_title(f'{zone} {b_name}')
+        ax2.axhline(np.mean(diff_dH), color = 'tab:orange', label = f'$\Delta dH$ = {np.mean(diff_dH): .2f} ')
+        ax2.axhline(np.mean(diff_dH) + np.std(diff_dH), ls = 'dashed' ,color = 'r', label = f'$\pm\sigma$ = {np.std(diff_dH): .2f} ')
+        ax2.axhline(np.mean(diff_dH) - np.std(diff_dH), ls = 'dashed' ,color = 'r')
+        ax2.hexbin(cat1_match[f'{b_name}'] , diff_dH, norm = LogNorm())
+        # cbar = plt.colorbar(h, ax=ax)
+        # ax.scatter(cat1_match[f'{b_name}'] , diff_H)
+        ax2.legend()
+        ax2.set_ylabel(f'$\Delta d{b_name}$', fontsize = 12)
+        ax2.set_xlabel(f'[{b_name}]', fontsize = 12)
+        
+        
+        var_m = (abs(diff_H) > 2) & (cat1_match[f'{b_name}'] < 22) 
         
         
         
-        region(cat1_match[var_m], 'ra', 'dec',
-                name = f'Var_{zone}_Ep1__Band{b_name}_stars_xy',
-                save_in = pruebas,
-                wcs = 'fk5',
-                color = 'blue',
-                marker = 'x')
-        region(cat2_match[var_m], 'ra', 'dec',
-                name = f'Var_{zone}_Ep2__Band{b_name}_stars_xy',
-                save_in = pruebas,
-                wcs = 'fk5',
-                color = 'cyan',
-                marker = 'x')
+        # region(cat1_match[var_m], 'ra', 'dec',
+        #         name = f'Var_{zone}_Ep1__Band{b_name}_stars_ad',
+        #         save_in = pruebas,
+        #         wcs = 'fk5',
+        #         color = 'blue',
+        #         marker = 'x',
+        #         note = 'id')
+        # region(cat2_match[var_m], 'ra', 'dec',
+        #         name = f'Var_{zone}_Ep2__Band{b_name}_stars_ad',
+        #         save_in = pruebas,
+        #         wcs = 'fk5',
+        #         color = 'cyan',
+        #         marker = 'x',
+        #         note = 'H')
         
-        # stop(320)
+        # region(cat1_match[var_m], 'x0', 'y0',
+        #         name = f'Var_{zone}_Ep1__Band{b_name}_stars_xy',
+        #         save_in = pruebas,
+        #         wcs = 'physical',
+        #         color = 'blue',
+        #         marker = 'cross', 
+        #         note = 'H')
         
+        # region(cat2_match[var_m], 'x0', 'y0',
+        #         name = f'Var_{zone}_Ep2__Band{b_name}_stars_xy',
+        #         save_in = pruebas,
+        #         wcs = 'physical',
+        #         color = 'cyan',
+        #         marker = 'cross',
+        #         note = 'H')
+        
+        
+        # stop(449)
         mask_H, l_lim,h_lim = sigma_clip(diff_H, sigma=sig_cl_H, masked = True, return_bounds= True, maxiters= 50)
         
         cat2_match = cat2_match[np.logical_not(mask_H.mask)]
@@ -388,7 +495,7 @@ for zone in zones[0+sigu:1+sigu]:
             
         
         
-        fig,(ax,ax2) = plt.subplots(1,2)
+        fig,(ax,ax2) = plt.subplots(1,2, figsize = (8,4))
         # ax.set_title(f'Matching starts {len(cat2_match)}')
         ax.set_title(f'{zone} {b_name}')
         ax.hist(diff_H[np.logical_not(mask_H.mask)], bins = 'auto',histtype = 'step', label = f'\u2605 = {len(cat2_match)}')
@@ -396,12 +503,19 @@ for zone in zones[0+sigu:1+sigu]:
         ax.axvline(np.mean(diff_H), color = 'k', ls = 'dashed', label = '$\overline{\Delta H}$= %.2f$\pm$%.2f'%(np.mean(diff_H),np.std(diff_H)), lw = 0.5)
         ax.axvline(l_lim, ls = 'dashed', color ='r', label ='%s$\sigma$'%(sig_cl_H))
         ax.set_xlim(-1,1)
-        ax2.hexbin(cat2_match[f'{b_name}'],diff_H[np.logical_not(mask_H.mask)], norm = LogNorm())
+        ax2.hexbin(cat2_match[f'{b_name}'],diff_H[np.logical_not(mask_H.mask)],gridsize = (34,5), norm = LogNorm())
         ax2.set_ylim(-1,1)
         ax.axvline(h_lim, ls = 'dashed', color ='r')
         ax.set_xlabel('$\Delta H$')
         ax.legend() 
+        ax2.set_xlabel(f'{b_name}')
+        ax2.set_ylabel('$\Delta H$')
+        fig.tight_layout()
         
+        # stop(320)
+# %%
+        
+
         c1_m = np.array([cat1_match['xp'],cat1_match['yp']]).T
         c2_m = np.array([cat2_match['xp'],cat2_match['yp']]).T
         
@@ -409,7 +523,8 @@ for zone in zones[0+sigu:1+sigu]:
         if destination == 1:
             # Time lapse to move Gaia Stars.
             
-            dt = (obst_dic['tyr1'] - obst_dic['tyr2'])*u.yr
+            dt = (obst_dic['tyr2'] - obst_dic['tyr1'])*u.yr
+            # dt = (obst_dic['tyr1'] - obst_dic['tyr2'])*u.yr
             
             p,(_,_)= aa.find_transform(c2_m,c1_m,max_control_points=100)
             
@@ -462,10 +577,10 @@ for zone in zones[0+sigu:1+sigu]:
         dx = (cat1_mi['xp'].value - cat2_mi['xp'].value)*1000
         dy = (cat1_mi['yp'].value - cat2_mi['yp'].value)*1000
         
-        cat1_mi['sx'].unit = u.mas
-        cat1_mi['sy'].unit = u.mas
-        cat2_mi['sx'].unit = u.mas
-        cat2_mi['sy'].unit = u.mas
+        cat1_mi['sx'].unit = u.arcsec
+        cat1_mi['sy'].unit = u.arcsec
+        cat2_mi['sx'].unit = u.arcsec
+        cat2_mi['sy'].unit = u.arcsec
         
         dpm_x = np.sqrt((cat2_mi['sx'].to(u.mas))**2 + (cat1_mi['sx'].to(u.mas))**2)/dt.to(u.year)
         dpm_y = np.sqrt((cat2_mi['sy'].to(u.mas))**2 + (cat1_mi['sy'].to(u.mas))**2)/dt.to(u.year)
@@ -501,9 +616,87 @@ for zone in zones[0+sigu:1+sigu]:
         ax2.legend()
         fig.tight_layout()
         
+        fig, (ax,ax2) = plt.subplots(1,2, figsize = (7,3.5))
         
+        ax.hexbin(cat1_mi['H'],cat1_mi['dpm_x'], norm = LogNorm())
+        ax2.hexbin(cat1_mi['H'],cat1_mi['dpm_y'], norm = LogNorm())
+        ax.set_xlabel('H')
+        ax.set_ylabel('dpm_x [mas/yr]')
+        ax.set_yticks(np.arange(1, 22,1))
+        ax.grid()
+        ax2.set_xlabel('H')
+        ax2.set_ylabel('dpm_y [mas/yr]')
+        
+        
+# %%
+        fig, ax = plt.subplots(1,1)
+        ax.set_title(f'{zone}')
+        ax.hexbin(cat2_mi[matching_band] - cat2_mi['H'], cat2_mi['H'], norm = LogNorm() )
+        # ax.scatter(cat2_mi[matching_band] - cat2_mi['H'], cat2_mi['H'] )
+        ax.invert_yaxis()
+        ax.set_xlabel(f'${matching_band}-H$')
+        ax.set_ylabel('$H$')
+        # ax.set_xlim(0,3)
+        
+        
+        # stop(630)
+# %%
+        
+
         cat1_mi.write(pm_results + f'pm_{zone}_{band}_posEpo1.txt', format = 'ascii', overwrite = True)
         
+        carmen = '/Users/amartinez/Desktop/for_people/for_Carmen/SOMA_HST_catalogs/'
+        cat1_mi.write(carmen + f'pm_{zone}_{band}_posEpo1.txt', format = 'ascii', overwrite = True)
+
+# =============================================================================
+#         This calculate direcction around the main star position
+# =============================================================================
+# =============================================================================
+#         cat1co = SkyCoord(ra = cat1_mi['ra'], dec = cat1_mi['dec'], unit = 'deg')
+#         
+#         # idxc, group_ms, d2d, d3d = ap_coor.search_around_sky(
+#         #     msco, cat1co, 10*u.arcsec)
+#         sep = msco.separation(cat1co)
+#         group_ms = sep < 20*u.arcsec
+#         cat_ms = cat1_mi[group_ms]
+#         
+#         fig, ax = plt.subplots()
+#         ax.scatter(cat1_mi['ra'], cat1_mi['dec'])
+#         ax.scatter(cat_ms['ra'], cat_ms['dec'])
+#         
+#         groups = [
+#         ((cat_ms['pm_x'] > 0) & (cat_ms['pm_y'] > 0), 'red',    'pp'),
+#         ((cat_ms['pm_x'] > 0) & (cat_ms['pm_y'] < 0), 'blue',   'pn'),
+#         ((cat_ms['pm_x'] < 0) & (cat_ms['pm_y'] > 0), 'green',  'np'),
+#         ((cat_ms['pm_x'] < 0) & (cat_ms['pm_y'] < 0), 'yellow', 'nn'),
+#         ]
+#         
+#         for mask, color, suffix in groups:
+#         
+#             region_vectors(
+#                 table=cat_ms[mask],
+#                 ra_col='ra',
+#                 dec_col='dec',
+#                 pmra_col='pm_x',
+#                 pmdec_col='pm_y',
+#                 name=f'MS_{zone}_{band}_vec_{suffix}',
+#                 save_in=tmp1,
+#                 color=color,
+#                 wcs='fk5',
+#                 scale=1,
+#             width=3
+#         )
+# 
+#         
+#         # gr = 
+#         for gr in range(0,4):
+#             fig, ax = plt.subplots(1,1)
+#             ax.hexbin(cat1_mi['J'] - cat1_mi['H'], cat1_mi['H'], cmap = 'cividis', norm = LogNorm())
+#             ax.scatter(cat_ms[groups[gr][0]]['J'] - cat_ms[groups[gr][0]]['H'],cat_ms[groups[gr][0]]['H'], color =groups[gr][1] )
+#             ax.invert_yaxis()
+#             ax.set_xlim(0,4)
+#         # stop(580)
+# =============================================================================
         # %%
         # =============================================================================
         # GAIA
@@ -546,7 +739,7 @@ for zone in zones[0+sigu:1+sigu]:
             # min_angular_separation_arcsec = 0.1*u.arcsec
             )
         
-        
+    
         gaia['id'] = np.arange(len(gaia))
         
         gaia.sort('phot_g_mean_mag')
@@ -566,7 +759,7 @@ for zone in zones[0+sigu:1+sigu]:
         ax.scatter(cat1_mi['ra'], cat1_mi['dec'], label = 'HST',s =1 )
         ax.scatter(gaia['ra'], gaia['dec'],zorder = 2, label = 'Gaia', s =1 )
         ax.legend()
-        
+        # stop()
         
         
         
@@ -596,8 +789,8 @@ for zone in zones[0+sigu:1+sigu]:
         pm_x_gaia = c_proj.pm_lon_coslat  # mas/yr
         pm_y_gaia = c_proj.pm_lat        # mas/yr
         
-        gaia['pm_x'] = pm_x_gaia
-        gaia['pm_y'] = pm_y_gaia
+        gaia['pm_x'] = pm_x_gaia*-1
+        gaia['pm_y'] = pm_y_gaia*-1
         
         gaia_c = SkyCoord(ra = gaia['ra1'], dec = gaia['dec1'], frame = 'icrs')
         cat_c = SkyCoord(ra = cat1_mi['ra'], dec = cat1_mi['dec'], frame = 'icrs')
@@ -626,10 +819,10 @@ for zone in zones[0+sigu:1+sigu]:
         ax.legend()
         
         
-        diff_pmx_all = gaia_m['pmra'] - cat_m['pm_x']
-        diff_pmy_all = gaia_m['pmdec'] - cat_m['pm_y']
-        # diff_pmx_all = gaia_m['pm_x'] - cat_m['pm_x']
-        # diff_pmy_all = gaia_m['pm_y'] - cat_m['pm_y']
+        # diff_pmx_all = gaia_m['pmra'] - cat_m['pm_x']
+        # diff_pmy_all = gaia_m['pmdec'] - cat_m['pm_y']
+        diff_pmx_all = gaia_m['pm_x'] - cat_m['pm_x']
+        diff_pmy_all = gaia_m['pm_y'] - cat_m['pm_y']
         
         
         mask, l = sig_cl(diff_pmx_all, diff_pmy_all, 3)
@@ -684,22 +877,23 @@ for zone in zones[0+sigu:1+sigu]:
         
         modes = ['pm_xy_color']
         # modes = ['pm_xy']
-        knn = 7
+        knn = 10
         gen_sim = 'kernnel'
         sim_lim ='minimun'
         # sim_lim ='mean'
     
         clus_dic = cluster_finder.finder(cat1_mi, 'pm_x', 'pm_y',
-                                     'x', 'y', 
+                                     'xp', 'yp', 
                                      'ra', 'dec',
                                      modes[0],
                                      f'{matching_band}','H',
-                                     knn,gen_sim,sim_lim, save_reg = None)
+                                     knn,gen_sim,sim_lim, save_reg = tmp1)
     
 # %%
         
-
-    # clus_dic['clus_1'].write(tmp1 + f'clus1_H{matching_band}.txt', format = 'ascii', overwrite = True)
+    # for k in clus_dic:
+    #     print(k)
+        # clus_dic[f'{k}'].write(tmp1 + f'{k}_H{matching_band}.txt', format = 'ascii', overwrite = True)
     # clus_dic['clus_0'].write(tmp1 + f'clus0_H{matching_band}.txt', format = 'ascii', overwrite = True)
          
    

@@ -68,8 +68,8 @@ from matplotlib import rcParams
 folder = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/'
 # results = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band}/epoch{epoch}/'
 # results = ''
-zone = 'IRAS16562-3959'
-# zone = 'G028.20-00.05'
+# zone = 'G032.03+00.05'
+zone = 'G028.20-00.05'
 band = '160w'
 # band = '128n'
 # epoch = 2
@@ -1151,8 +1151,8 @@ region_vectors(
 if look_for_cluster == 'yes':
     
    
-    # modes = ['pm_xy_color']
-    modes = ['pm_xy']
+    modes = ['pm_xy_color']
+    # modes = ['pm_xy']
     knn = 20
     gen_sim = 'kernnel'
     # sim_lim ='minimun'
