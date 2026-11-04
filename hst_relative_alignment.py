@@ -69,7 +69,7 @@ band_ls = ['160w']
 # =============================================================================
 # Matching Lists
 # =============================================================================
-matching_lists = 1#!!! If you want to use matched lists with two different magnitudes make it 1 (see hst_filter_matching.py)
+matching_lists = 0#!!! If you want to use matched lists with two different magnitudes make it 1 (see hst_filter_matching.py)
 # matching_band = 'Paβ'
 matching_band = 'J'
 
@@ -139,8 +139,8 @@ d_pm = 150*u.mas
 # =============================================================================
 # CLUSTERS
 # =============================================================================
-# look_for_cluster = 'no'
-look_for_cluster = 'yes'
+look_for_cluster = 'no'
+# look_for_cluster = 'yes'
 
 # =============================================================================
 # Dictionaries
@@ -156,7 +156,7 @@ lopping = 1
 # for loop in range(1):
 wloop_counter = 0
 # ZP = 25 # INVENTED
-sigu = 4#!!!
+sigu = 1#!!!
 for zone in zones[0+sigu:1+sigu]:
 # for msi, zone in enumerate(zones):
     
@@ -206,7 +206,10 @@ for zone in zones[0+sigu:1+sigu]:
             if red_techn == 'Original':
                 results = f'/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/{zone}/f{band}/epoch{epoch}/'
                 if not matching_lists:
-                    cat = Table.read(results + f'hst_{zone}_epoch{epoch}_stars_f{band}.txt', format = 'ascii')
+                    # cat = Table.read(results + f'hst_{zone}_epoch{epoch}_stars_f{band}.txt', format = 'ascii')
+                    
+                    # hst_ep2_f160w_drz_stars160w
+                    cat = Table.read(results + f'hst_ep{epoch}_f{band}_drz_stars160w.txt', format = 'ascii')
                     cat['id'] = np.arange(1,len(cat)+1)
                 if matching_lists:
                     # cat = Table.read(results + f'hst_{zone}_epoch{epoch}_HJ.txt', format = 'ascii')
@@ -265,7 +268,7 @@ for zone in zones[0+sigu:1+sigu]:
             # # plt.imshow(ima[1].data, origin='lower', cmap = 'grey', norm =LogNorm(vmin =0.01, vmax = 10))  
             # plt.grid(color='white', ls='solid')
             # plt.show()
-            # stop()
+            
 # %%
             
 
@@ -451,7 +454,7 @@ for zone in zones[0+sigu:1+sigu]:
         
         
         var_m = (abs(diff_H) > 2) & (cat1_match[f'{b_name}'] < 22) 
-        
+        # stop(454)
         
         
         # region(cat1_match[var_m], 'ra', 'dec',

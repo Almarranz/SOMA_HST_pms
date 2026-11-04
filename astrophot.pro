@@ -2,7 +2,7 @@ PRO ASTROPHOT, zone, filter, epoch
 
 zone = 'G028.20-00.05'
 filter = '160w'
-epoch = '1'
+epoch = '2'
 ; path = '/Users/fedriani/Documents/postdoc_iaa/HST_project/HST_data/G028.20-00.05/gaia_alignment/Epoch1/starfinder/'
 path = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/'+ zone +'/gaia_alignment/Epoch'+ epoch +'/'
 pruebas = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/pruebas/'

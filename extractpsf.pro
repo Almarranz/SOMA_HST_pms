@@ -5,9 +5,23 @@ PRO EXTRACTPSF, zone, filter, epoch
 ; dir = './'
 
 zone = 'G028.20-00.05'
-filter = '160w'
-epoch = '1'
+; filter = '160w'
+; epoch = '1'
 
+
+epochs = ['1', '2']
+; epochs = ['1']
+; filters = ['160w', '110w', '128n', '164n']
+filters = ['160w', '110w']
+
+For flt = 0, N_ELEMENTS(filters)-1 DO BEGIN
+
+    filter = filters[flt]
+    
+    FOR i = 0, N_ELEMENTS(epochs)-1 DO BEGIN
+       epoch = epochs[i]
+
+path = '/Users/amartineztinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/'+ zone +'/gaia_alignment/Epoch'+ epoch +'/'
 path = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/SOMA_HST_pms_variability/'+ zone +'/gaia_alignment/Epoch'+ epoch +'/'
 pruebas = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/pruebas/'
 tmpdir = '/Users/amartinez/Desktop/Projects/SOMA_HST_pm/sf/results/'+ zone +'/f'+ filter +'/epoch'+ epoch +'/tmp/'
@@ -220,7 +234,8 @@ psf_size = 2*maskrad+1
   writefits, tmpdir + 'psf_'+filter+'.fits', psf
   writefits, tmpdir + 'psf_sigma'+filter+'.fits', psf_noise/total(psf)
   
-  print, 'FINITO'
+  print, 'FINITO epoch: ',epoch, 'filter: ', filter
   
-
+ endfor ; this is for the epochs
+endfor ; this is for the filters
 END
