@@ -13,15 +13,15 @@ PRO EXTRACTPSF_GUI_noAlig, zone, filter, epoch
 ;   epoch = '1'
 epochs = ['1', '2']
 ; epochs = ['1']
-filters = ['160w', '110w', '128n', '164n']
+; filters = ['160w', '110w', '128n', '164n']
 
 ; filters = ['160w', '110w']
 ; filters = ['128n', '164n']
 ; filters = ['128n']
-; filters = ['160w']
+filters = ['110w']
 
-zones = [ 'AFGL5180','G028.20-00.05', 'G032.03+00.05', 'G35.2-0.74N', 'G339.88-01.26','IRAS07299-1651', 'IRAS16562-3959']
-; zones = [ 'G028.20-00.05']
+; zones = [ 'AFGL5180','G028.20-00.05', 'G032.03+00.05', 'G35.2-0.74N', 'G339.88-01.26','IRAS07299-1651', 'IRAS16562-3959']
+zones = [ 'G028.20-00.05']
 
 
 FOR z = 0, N_ELEMENTS(zones)-1 DO BEGIN

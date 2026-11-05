@@ -233,7 +233,7 @@
 """
 Created on Mon Nov  2 11:29:26 2026
 
-@author: amartinez
+ author: amartinez
 
 Injection-recovery experiment:
   - scramble the real catalog to destroy real clusters
